@@ -1,0 +1,39 @@
+{# Session navigation component - can be used for ToC or expandable navigation #}
+{% macro render_session_nav(sessions, mode="toc", link_prefix="") %}
+{% if sessions and sessions|length > 0 %}
+<div class='navigation'>
+    {% if mode == "toc" %}
+    <h2>Sessions</h2>
+    <span class='nav-hint'>↓ Click a box below to scroll down to the corresponding session</span>
+    {% elif mode == "expandable" %}
+    <h2>Session Navigation</h2>
+    <span class='nav-hint'>↓ Click any to open individual session page</span>
+    {% endif %}
+
+    <div class='session-nav'>
+        {% for session in sessions %}
+        <a href='{{ link_prefix }}{% if mode == "expandable" %}session-{{ session.id }}.html{% else %}#msg-d-{{ session.message_index }}{% endif %}'
+            class='session-link'>
+            <div class='session-link-title'>
+                {% if session.summary %}
+                {{ session.summary }} •
+                {% endif %}
+                {{ session.id[:8] }}
+            </div>
+            <div class='session-link-meta'>
+                <span class="timestamp"{% if session.first_timestamp %} data-timestamp="{{ session.first_timestamp }}"{% endif %}{% if session.last_timestamp and session.last_timestamp != session.first_timestamp %} data-timestamp-end="{{ session.last_timestamp }}"{% endif %}>{{ session.timestamp_range }}</span> • {{ session.message_count }} messages
+                {% if session.token_summary %}
+                <br>{{ session.token_summary }}
+                {% endif %}
+            </div>
+            {% if session.first_user_message %}
+            <pre class='session-preview'>
+                {{- session.first_user_message|e -}}
+            </pre>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endmacro %}

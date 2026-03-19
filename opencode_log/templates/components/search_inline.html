@@ -1,0 +1,29 @@
+<!-- Inline Search Component for Filter Toolbar -->
+<div id="searchContainer" class="search-inline search-container">
+    <div class="search-input-wrapper">
+        <input type="text"
+               id="searchInput"
+               class="search-input"
+               placeholder="Search conversations... (Ctrl+F)"
+               autocomplete="off">
+        <button id="searchClear" class="search-clear" title="Clear search">✕</button>
+    </div>
+
+    <div id="searchResultsInfo" class="search-results-info">
+        <div class="search-navigation">
+            <span id="searchResultCount">No results</span>
+            <button id="searchPrev" class="search-nav-btn" disabled title="Previous match (Shift+F3)">↑</button>
+            <button id="searchNext" class="search-nav-btn" disabled title="Next match (F3)">↓</button>
+        </div>
+        <div class="search-options-inline">
+            <label class="search-option-inline">
+                <input type="checkbox" id="searchRegex">
+                <span>Regex</span>
+            </label>
+            <label class="search-option-inline">
+                <input type="checkbox" id="searchInFiltered" checked>
+                <span>Visible only</span>
+            </label>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,1057 @@
+/* Message and content styles */
+.message {
+    margin-bottom: 1em;
+    padding: var(--message-padding);
+    border-radius: 8px;
+    border-left: var(--white-dimmed) 2px solid;
+    background-color: var(--highlight-light);
+    box-shadow: -7px -7px 10px #eeeeee44, 7px 7px 10px #00000011;
+    border-top: var(--white-dimmed) 1px solid;
+    border-bottom: #00000017 1px solid;
+    border-right: #00000017 1px solid;
+    position: relative;
+}
+
+/* Part (message content block) base styles */
+.part {
+    display: block;
+    margin-bottom: 0.8em;
+    clear: both;
+}
+
+.part:last-child {
+    margin-bottom: 0;
+}
+
+/* Specific part type styles */
+.part-text pre {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid #cbd5e0;
+    overflow-x: auto;
+}
+
+.part-tool {
+    border-left: 3px solid #48bb78;
+    padding-left: 8px;
+}
+
+.part-reasoning {
+    border-left: 3px solid #9f7aea;
+    padding-left: 8px;
+}
+
+.part-step-start,
+.part-step-finish {
+    opacity: 0.7;
+    font-size: 0.9em;
+}
+
+/* Message filtering */
+.message.filtered-hidden {
+    display: none;
+}
+
+/* Message with fold bar: remove bottom padding */
+.message:has(.fold-bar) {
+    padding-bottom: 0;
+}
+
+/* Horizontal Fold Bar - integrated into message box */
+.fold-bar {
+    display: flex;
+    margin: 1em calc(-1 * var(--message-padding)) 0;
+    height: 28px;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.fold-bar-section {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.4em;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.9em;
+    font-weight: 500;
+    padding: 0.4em 0.8em 0.4em 0.4em;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid transparent;
+    background: linear-gradient(to bottom, #f8f8f844, #f0f0f0);
+}
+
+/* Show border only when folded (content is hidden) */
+.fold-bar-section.folded {
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+}
+
+.fold-bar-section:hover {
+    background: linear-gradient(to bottom, #fff, #f5f5f5);
+    transform: translateY(1px);
+}
+
+.fold-bar-section:active {
+    transform: translateY(0);
+}
+
+/* Left section: fold one level */
+.fold-one-level {
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Full-width single button when counts are equal */
+.fold-bar-section.full-width {
+    border-right: none;
+}
+
+/* Icon styling */
+.fold-icon {
+    font-size: 1.1em;
+    line-height: 1;
+    color: var(--fold-color);
+}
+
+.fold-count {
+    font-weight: 600;
+    min-width: 1.5em;
+    text-align: center;
+}
+
+.fold-label {
+    color: var(--fold-color);
+    font-size: 0.9em;
+}
+
+/* Border colors matching message types - only shown when folded */
+.fold-bar[data-border-color="user"] .fold-bar-section.folded,
+.fold-bar[data-border-color="user compacted"] .fold-bar-section.folded,
+.fold-bar[data-border-color="user sidechain"] .fold-bar-section.folded,
+.fold-bar[data-border-color="user compacted sidechain"] .fold-bar-section.folded {
+    border-bottom-color: var(--user-color);
+}
+
+.fold-bar[data-border-color="user slash-command"] .fold-bar-section.folded,
+.fold-bar[data-border-color="user slash-command sidechain"] .fold-bar-section.folded,
+.fold-bar[data-border-color="user command-output"] .fold-bar-section.folded {
+    border-bottom-color: var(--user-dimmed);
+}
+
+.fold-bar[data-border-color="assistant"] .fold-bar-section.folded,
+.fold-bar[data-border-color="assistant sidechain"] .fold-bar-section.folded {
+    border-bottom-color: var(--assistant-dimmed);
+}
+
+.fold-bar[data-border-color="system"] .fold-bar-section.folded {
+    border-bottom-color: var(--system-color);
+}
+
+.fold-bar[data-border-color="system-warning"] .fold-bar-section.folded {
+    border-bottom-color: var(--system-warning-color);
+}
+
+.fold-bar[data-border-color="system-error"] .fold-bar-section.folded {
+    border-bottom-color: var(--system-error-color);
+}
+
+.fold-bar[data-border-color="system-info"] .fold-bar-section.folded {
+    border-bottom-color: var(--info-dimmed);
+}
+
+.fold-bar[data-border-color="tool_use"] .fold-bar-section.folded,
+.fold-bar[data-border-color="tool_use sidechain"] .fold-bar-section.folded {
+    border-bottom-color: var(--tool-use-color);
+}
+
+.fold-bar[data-border-color="tool_result"] .fold-bar-section.folded,
+.fold-bar[data-border-color="tool_result sidechain"] .fold-bar-section.folded {
+    border-bottom-color: var(--success-dimmed);
+}
+
+.fold-bar[data-border-color="tool_result error"] .fold-bar-section.folded,
+.fold-bar[data-border-color="tool_result error sidechain"] .fold-bar-section.folded {
+    border-bottom-color: var(--error-dimmed);
+}
+
+.fold-bar[data-border-color="thinking"] .fold-bar-section.folded,
+.fold-bar[data-border-color="thinking sidechain"] .fold-bar-section.folded {
+    border-bottom-color: var(--assistant-color);
+}
+
+.fold-bar[data-border-color="image"] .fold-bar-section.folded,
+.fold-bar[data-border-color="image sidechain"] .fold-bar-section.folded {
+    border-bottom-color: var(--info-dimmed);
+}
+
+.fold-bar[data-border-color="unknown"] .fold-bar-section.folded,
+.fold-bar[data-border-color="unknown sidechain"] .fold-bar-section.folded {
+    border-bottom-color: var(--neutral-dimmed);
+}
+
+.fold-bar[data-border-color="bash-input"] .fold-bar-section.folded {
+    border-bottom-color: var(--user-color);
+}
+
+.fold-bar[data-border-color="bash-output"] .fold-bar-section.folded {
+    border-bottom-color: var(--user-dimmed);
+}
+
+.fold-bar[data-border-color="session-header"] .fold-bar-section.folded {
+    border-bottom-color: var(--system-warning-color);
+}
+
+/* Sidechain (sub-assistant) fold-bar styling - dashed border when folded */
+.sidechain .fold-bar-section.folded {
+    border-bottom-style: dashed;
+}
+
+/* ========================================
+   CONVERSATION STRUCTURE - Margin Hierarchy
+   ======================================== */
+
+/* Right-aligned messages (user-initiated, right margin 0, left margin 33%) */
+.user:not(.compacted),
+.bash-input,
+.bash-output,
+.system:not(.system-info):not(.system-warning):not(.system-error) {
+    margin-left: 33%;
+    margin-right: 0;
+}
+
+/* System error messages (assistant-generated) */
+.system-error {
+    margin-left: 0;
+    margin-right: 8em;
+}
+
+/* Left-aligned messages (assistant-generated) with progressive indentation */
+/* Base assistant messages */
+.assistant,
+.thinking {
+    margin-left: 0;
+    margin-right: 8em;
+}
+
+/* Tool messages (nested under assistant) */
+.tool_use,
+.tool_result {
+    margin-left: 2em;
+    margin-right: 6em;
+}
+
+/* System warnings/info at tool level (e.g., hook notifications) */
+.system-warning,
+.system-info {
+    margin-left: 2em;
+    margin-right: 6em;
+}
+
+/* Sidechain messages (sub-assistant hierarchy) */
+/* Note: .sidechain.user (Sub-assistant prompt) is no longer produced
+   since it duplicates the Task tool input prompt */
+
+/* Sub-assistant response and thinking (nested under Task tool result) */
+.sidechain.assistant,
+.sidechain.thinking {
+    margin-left: 4em;
+    margin-right: 4em;
+}
+
+/* Sub-assistant tools (nested below sub-assistant) */
+.sidechain.tool_use,
+.sidechain.tool_result {
+    margin-left: 6em;
+    margin-right: 2em;
+}
+
+/* ======================================== */
+
+/* Message header info styling */
+.header-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.timestamp-row {
+    display: flex;
+    flex-direction: row;
+    align-items: normal;
+    gap: 8px;
+}
+
+.pair-duration {
+    font-size: 80%;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.token-usage {
+    font-size: 0.75em;
+    color: #888;
+}
+
+/* Paired message styling */
+.message.pair_first {
+    margin-bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom: none;
+}
+
+.message.pair_last {
+    margin-top: 0;
+    margin-bottom: 1em;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top: 1px solid #00000011;
+}
+
+.message.pair_middle {
+    margin-top: 0;
+    margin-bottom: 0;
+    border-radius: 0;
+    border-top: 1px solid #00000011;
+    border-bottom: none;
+}
+
+.session-divider {
+    margin: 70px 0;
+    border-top: 2px solid #fff;
+}
+
+/* Message type styling */
+.user {
+    border-left-color: var(--user-color);
+}
+
+/* Steering user messages (out-of-band input while agent is working) */
+.user.steering {
+    border-left-color: var(--user-dimmed);
+    opacity: 0.7;
+}
+
+/* Slash command prompts (isMeta=true, LLM-generated content) */
+.user.slash-command {
+    border-left-color: var(--user-color);
+}
+
+.assistant {
+    border-left-color: var(--assistant-color);
+}
+
+/* Dimmed assistant when paired with thinking */
+.assistant.pair_last {
+    border-left-color: var(--assistant-dimmed);
+}
+
+.system {
+    border-left-color: var(--system-color);
+}
+
+.system-warning {
+    border-left-color: var(--system-warning-color);
+    background-color: var(--highlight-semi);
+}
+
+.system-error {
+    border-left-color: var(--system-error-color);
+    background-color: var(--error-semi);
+}
+
+.system-info {
+    border-left-color: var(--info-dimmed);
+    background-color: var(--highlight-dimmed);
+}
+
+.system-info .header,
+.system-info .content {
+    font-size: 80%;
+}
+
+/* Hook summary styling */
+.system-hook {
+    border-left-color: var(--warning-dimmed);
+    background-color: var(--highlight-dimmed);
+    font-size: 90%;
+}
+
+.hook-summary {
+    cursor: pointer;
+}
+
+.hook-summary summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.hook-details {
+    margin-top: 0.5em;
+    padding: 0.5em;
+    background-color: var(--code-bg);
+    border-radius: 4px;
+}
+
+.hook-commands {
+    margin-bottom: 0.5em;
+}
+
+.hook-commands code {
+    display: block;
+    padding: 0.25em 0.5em;
+    font-size: 0.85em;
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+.hook-errors {
+    margin-top: 0.5em;
+}
+
+.hook-error {
+    margin: 0.25em 0;
+    padding: 0.5em;
+    background-color: var(--error-semi);
+    border-left: 3px solid var(--system-error-color);
+    font-size: 0.85em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Command output styling */
+.command-output {
+    background-color: var(--highlight-light);
+    border-left-color: var(--user-color);
+}
+
+.command-output-content {
+    background-color: #1e1e1e08;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #00000011;
+    margin-top: 8px;
+    font-family: var(--font-monospace);
+    font-size: 0.9em;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: var(--text-primary);
+    overflow-x: auto;
+}
+
+.command-output-content td {
+    border-left: 1px dotted #bbb;
+    padding: 0 1em;
+}
+.command-output-content th {
+    text-align: left;
+    padding: 0 1em;
+}
+
+.content pre.command-output-content {
+    padding: .5em;
+}
+
+/* Bash command styling (user-initiated, right-aligned) */
+.bash-input {
+    background-color: var(--highlight-light);
+    border-left-color: var(--user-color);
+}
+
+.bash-prompt {
+    color: var(--user-color);
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-right: 8px;
+}
+
+.bash-command {
+    font-family: var(--font-monospace);
+    font-size: 0.95em;
+    color: #2c3e50;
+    background-color: var(--bg-neutral);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+/* Bash output styling (user-initiated, right-aligned) */
+.bash-output {
+    background-color: var(--highlight-light);
+    border-left-color: var(--user-dimmed);
+}
+
+.bash-output pre.bash-stdout,
+.bash-output pre.bash-stderr {
+    padding: 8px;
+    border-radius: 4px;
+    margin: 4px 0;
+    font-family: var(--font-monospace);
+    font-size: 80%;
+    line-height: 1.3;
+    white-space: pre;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 300px;
+}
+
+.bash-output pre.bash-stdout {
+    background-color: #1e1e1e05;
+    border: 1px solid #00000011;
+    color: var(--text-primary);
+}
+
+.bash-output pre.bash-stderr {
+    background-color: #ffebee;
+    border: 1px solid #ffcdd2;
+    color: #c62828;
+}
+
+.bash-empty {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Bash tool content styling (Tool Use message) */
+.bash-tool-content {
+    margin: 8px 0;
+}
+
+.bash-tool-description {
+    color: var(--text-muted);
+    font-size: 0.95em;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.content pre.bash-tool-command {
+    background-color: var(--code-bg-color);
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--tool-param-sep-color);
+    font-family: var(--font-monospace);
+    font-size: 0.9em;
+    color: #2c3e50;
+    margin: 0;
+    overflow-x: auto;
+}
+
+.tool_use {
+    border-left-color: var(--tool-use-color);
+}
+
+.tool_result {
+    border-left-color: var(--success-dimmed);
+}
+
+.tool_result.error {
+    border-left-color: var(--error-dimmed);
+    background-color: var(--error-semi);
+}
+
+.message.tool_use pre, .message.tool_result pre {
+    font-size: 80%;
+}
+
+/* Sidechain message styling */
+.sidechain {
+    opacity: 0.85;
+    background-color: var(--neutral-semi);
+    border-left-width: 2px;
+    border-left-style: dashed;
+}
+
+.sidechain .sidechain-indicator {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    margin-bottom: 5px;
+    padding: 2px 6px;
+    background-color: #e9ecef88;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.thinking {
+    border-left-color: var(--assistant-color);
+}
+
+.image {
+    border-left-color: #d48a5e;
+    margin-left: 0; /* Align with user messages */
+}
+
+/* Session header styling */
+.session-header {
+    background-color: var(--session-bg-dimmed);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 30px 0 20px 0;
+    box-shadow: -7px -7px 10px #eeeeee44, 7px 7px 10px #00000011;
+    border-left: var(--white-dimmed) 1px solid;
+    border-top: var(--white-dimmed) 1px solid;
+    border-bottom: #00000017 1px solid;
+    border-right: #00000017 1px solid;
+}
+
+.session-header .header {
+    margin-bottom: 8px;
+    font-size: 1.2em;
+}
+
+.session-subtitle {
+    font-size: 0.9em;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* IDE notification styling */
+.ide-notification {
+    background-color: var(--ide-notification-dimmed);
+    border-left: var(--assistant-color) 2px solid;
+    padding: 8px 12px;
+    margin: 8px 0;
+    border-radius: 4px;
+    font-size: 80%;
+    font-style: italic;
+}
+
+/* IDE selection styling */
+.ide-selection-collapsible {
+    margin-top: 4px;
+}
+
+.ide-selection-collapsible summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    user-select: none;
+}
+
+.ide-selection-collapsible summary:hover {
+    color: var(--text-primary);
+}
+
+.ide-selection-content {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: var(--bg-neutral);
+    border-radius: 3px;
+    border: 1px solid #dee2e6;
+    font-family: var(--font-monospace);
+    font-size: 0.85em;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+
+/* Content styling */
+.content {
+    word-wrap: break-word;
+}
+
+.content>pre {
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+
+.header:has(+ .content > details.collapsible-details) {
+    margin-left: 1em;
+}
+
+/* Assistant and Thinking content styling */
+.assistant .content,
+.thinking-text,
+.user.compacted .content,
+.markdown {
+    font-family: var(--font-ui);
+}
+
+.markdown table {
+    border-collapse: collapse;
+}
+
+.markdown td {
+    padding: .5em;
+    border-top: 1px solid #bbb;
+}
+
+.markdown th {
+    padding: .5em;
+    border-bottom: 1px solid #888;
+}
+
+/* Code block styling */
+pre > code {
+    display: block;
+}
+
+/* Tool content styling */
+.tool-content {
+    background-color: var(--neutral-dimmed);
+    border-radius: 4px;
+    padding: 8px;
+    margin: 8px 0;
+    overflow-x: auto;
+    box-shadow: -4px -4px 10px #eeeeee33, 4px 4px 10px #00000007;
+    border-left: var(--white-dimmed) 1px solid;
+    border-top: var(--white-dimmed) 1px solid;
+    border-bottom: #00000017 1px solid;
+    border-right: #00000017 1px solid;
+}
+
+/* Tool parameter table styling */
+.tool-params-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 80%;
+}
+
+.tool-params-table tr {
+    border-bottom: 1px solid var(--tool-param-sep-color);
+}
+
+.tool-param-key {
+    padding: 4px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    vertical-align: top;
+    width: 8em;
+}
+
+.tool-param-value {
+    padding: 4px;
+    color: #212529;
+    vertical-align: top;
+}
+
+.tool-param-structured {
+    margin: 0;
+    background-color: var(--bg-neutral);
+    padding: 4px;
+    border-radius: 3px;
+}
+
+.tool-param-collapsible {
+    margin: 0;
+}
+
+.tool-param-collapsible summary {
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.tool-param-collapsible summary:hover {
+    color: var(--text-primary);
+}
+
+.tool-param-collapsible[open] > summary {
+    display: none;
+}
+
+.tool-param-full {
+    margin-top: 4px;
+    word-break: break-all;
+}
+
+.tool-params-empty {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.tool-result {
+    background-color: var(--tool-result-dimmed);
+    border-left: #4caf5088 1px solid;
+}
+
+.tool-use {
+    background-color: var(--highlight-dimmed);
+    border-left: #2196f388 1px solid;
+}
+
+.thinking-content {
+    font-style: italic;
+    font-size: 80%;
+}
+
+.thinking-content em {
+    font-style: normal;
+}
+
+.thinking-text {
+    font-family: var(--font-ui);
+    font-size: 90%;
+    word-wrap: break-word;
+    color: #555;
+}
+
+.tool-input {
+    background-color: var(--tool-input-dimmed);
+    border-radius: 4px;
+    padding: 6px;
+    margin: 4px 0;
+    font-size: 0.9em;
+    box-shadow: -7px -7px 10px #eeeeee44, 7px 7px 10px #00000011;
+    border-left: var(--white-dimmed) 1px solid;
+    border-top: var(--white-dimmed) 1px solid;
+    border-bottom: #00000017 1px solid;
+    border-right: #00000017 1px solid;
+}
+
+/* Session summary styling */
+.session-summary {
+    background-color: var(--white-dimmed);
+    border-left: #4caf5088 4px solid;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 0 4px 4px 0;
+    font-style: italic;
+    box-shadow: -7px -7px 10px #eeeeee44, 7px 7px 10px #00000011;
+    border-top: var(--white-dimmed) 1px solid;
+    border-bottom: #00000017 1px solid;
+    border-right: #00000017 1px solid;
+}
+
+/* Collapsible details styling */
+details summary {
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+/* Only apply negative margin when details is inside .content wrapper */
+.content > .collapsible-details {
+    margin-top: -2em;
+}
+
+/* For details directly in .part, use normal spacing */
+.part > .collapsible-details,
+.part .collapsible-details {
+    margin-top: 0;
+}
+
+.collapsible-details summary {
+    position: relative;
+    cursor: pointer;
+}
+
+/* Style content directly in details (without preview-content wrapper) */
+.collapsible-details > pre,
+.collapsible-details > div {
+    margin-top: 0.5em;
+}
+
+/* Collapsible code blocks (Read/Edit/Write tools) */
+.tool_result .collapsible-code {
+    margin-top: -2.5em;
+}
+
+.tool_result .collapsible-code summary {
+    cursor: pointer;
+    padding-top: 0.5em;
+    background: var(--color-bg-secondary);
+    border-radius: 4px;
+}
+
+.tool_result .collapsible-code summary:hover {
+    background: var(--color-bg-tertiary);
+}
+
+/* Preview content styling - shown when closed */
+.collapsible-details:not([open]) .preview-content {
+    margin-top: 4px;
+}
+
+/* Tool use/result/bash-output preview content with gradient fade */
+.tool_use .preview-content,
+.tool_result .preview-content,
+.bash-output .preview-content {
+    opacity: 0.7;
+    mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+}
+
+/* Fix list rendering in preview-content inside summary */
+/* Mistune wraps list content in <p> tags which causes line breaks */
+.preview-content li > p:first-child {
+    display: inline;
+}
+
+/* Hide preview content when details/collapsible is open */
+.collapsible-details[open] .preview-content,
+.collapsible-code[open] .preview-content {
+    display: none;
+}
+
+/* Style the full details content */
+.details-content {
+    margin-top: 4px;
+}
+
+/* Hide details content when closed */
+.collapsible-details:not([open]) .details-content {
+    display: none;
+}
+
+/* Style pre and other elements within details content */
+.content pre {
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+    color: #555;
+    line-height: 1.3;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Message filtering */
+.message.filtered-hidden {
+    display: none;
+}
+
+/* ANSI color classes */
+/* Standard colors */
+.ansi-black { color: #000000; }
+.ansi-red { color: #cd3131; }
+.ansi-green { color: #0dbc79; }
+.ansi-yellow { color: #e5e510; }
+.ansi-blue { color: #2472c8; }
+.ansi-magenta { color: #bc3fbc; }
+.ansi-cyan { color: #11a8cd; }
+.ansi-white { color: #e5e5e5; }
+
+/* Bright colors */
+.ansi-bright-black { color: #666666; }
+.ansi-bright-red { color: #f14c4c; }
+.ansi-bright-green { color: #23d18b; }
+.ansi-bright-yellow { color: #f5f543; }
+.ansi-bright-blue { color: #3b8eea; }
+.ansi-bright-magenta { color: #d670d6; }
+.ansi-bright-cyan { color: #29b8db; }
+.ansi-bright-white { color: #ffffff; }
+
+/* Background colors */
+.ansi-bg-black { background-color: #000000; }
+.ansi-bg-red { background-color: #cd3131; }
+.ansi-bg-green { background-color: #0dbc79; }
+.ansi-bg-yellow { background-color: #e5e510; }
+.ansi-bg-blue { background-color: #2472c8; }
+.ansi-bg-magenta { background-color: #bc3fbc; }
+.ansi-bg-cyan { background-color: #11a8cd; }
+.ansi-bg-white { background-color: #e5e5e5; }
+
+/* Bright background colors */
+.ansi-bg-bright-black { background-color: #666666; }
+.ansi-bg-bright-red { background-color: #f14c4c; }
+.ansi-bg-bright-green { background-color: #23d18b; }
+.ansi-bg-bright-yellow { background-color: #f5f543; }
+.ansi-bg-bright-blue { background-color: #3b8eea; }
+.ansi-bg-bright-magenta { background-color: #d670d6; }
+.ansi-bg-bright-cyan { background-color: #29b8db; }
+.ansi-bg-bright-white { background-color: #ffffff; }
+
+/* Text styles */
+.ansi-bold { font-weight: bold; }
+.ansi-dim { opacity: 0.7; }
+.ansi-italic { font-style: italic; }
+.ansi-underline { text-decoration: underline; }
+
+/* Image styling */
+.tool-result-image,
+.uploaded-image {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+/* WebFetch tool styling */
+.webfetch-prompt {
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-bottom: 8px;
+}
+
+.webfetch-meta {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.85em;
+}
+
+.webfetch-status {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.webfetch-status-success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.webfetch-status-error {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.webfetch-size,
+.webfetch-duration {
+    color: var(--text-muted);
+}
+
+/* Override negative margin for WebFetch collapsible - needs space for meta badges */
+.webfetch-result.collapsible-code {
+    margin-top: 0;
+}
+
+/* Override centered h1 from global styles for WebFetch content */
+.webfetch-result h1 {
+    text-align: left;
+}
+
+@media (max-width: 1280px) {
+    .fold-bar {
+        height: auto;
+    }
+    .user:not(.compacted),
+    .bash-input,
+    .bash-output,
+    .system:not(.system-info):not(.system-warning):not(.system-error) {
+        margin-left: 10%;
+    }
+    .system-error {
+        margin-right: 8%;
+    }
+    .assistant,
+    .thinking {
+        margin-right: 8%;
+    }
+    .tool_use,
+    .tool_result {
+        margin-left: 2%;
+        margin-right: 6%;
+    }
+    .system-warning,
+    .system-info {
+        margin-left: 2%;
+        margin-right: 6%;
+    }
+    .sidechain.assistant,
+    .sidechain.thinking {
+        margin-left: 4%;
+        margin-right: 4%;
+    }
+    .sidechain.tool_use,
+    .sidechain.tool_result {
+        margin-left: 6%;
+        margin-right: 2%;
+    }
+}

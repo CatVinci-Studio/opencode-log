@@ -1,0 +1,493 @@
+<!-- Timeline Component Template -->
+<!-- vis-timeline integration for transcript visualization -->
+
+<div id="timeline-container"
+    style="display: none; position: sticky; top: 0; z-index: 100; background: white; border-bottom: 1px solid #ddd; width: 100vw; margin-left: calc(-50vw + 50%); overflow: hidden; min-height: 150px; max-height: 80vh;">
+    <div id="timeline-visualization" style="height: calc(100% - 8px); width: 100%;"></div>
+    <div id="timeline-resize-handle"
+        style="position: absolute; bottom: 0; left: 0; right: 0; height: 8px; background: linear-gradient(to bottom, transparent, #ddd); cursor: ns-resize; display: flex; align-items: center; justify-content: center;">
+        <div style="width: 40px; height: 3px; background: #999; border-radius: 2px;"></div>
+    </div>
+</div>
+
+<script id="timeline-script">
+    // Timeline functionality - inline for self-contained HTML
+    (function () {
+        let timeline = null;
+        let items = null;
+        let groups = null;
+        let isTimelineLoaded = false;
+        let timelineIdToElement = new Map(); // Map timeline IDs to DOM elements
+        let isResizing = false;
+
+        // Message type to group mapping
+        const messageTypeGroups = {
+            'user': { id: 'user', content: '🤷 User', style: 'background-color: #e3f2fd;' },
+            'assistant': { id: 'assistant', content: '🤖 Assistant', style: 'background-color: #f3e5f5;' },
+            'tool_use': { id: 'tool_use', content: '🛠️ Tool Use', style: 'background-color: #fff3e0;' },
+            'tool_result': { id: 'tool_result', content: '🧰 Tool Result', style: 'background-color: #e8f5e8;' },
+            'thinking': { id: 'thinking', content: '💭 Thinking', style: 'background-color: #fce4ec;' },
+            'system': { id: 'system', content: '⚙️ System', style: 'background-color: #ffeee1;' },
+            'image': { id: 'image', content: '🖼️ Image', style: 'background-color: #e1f5fe;' },
+            'sidechain': { id: 'sidechain', content: '🔗 Sub-assistant', style: 'background-color: #f5f5f5;' },
+            'slash-command': { id: 'slash-command', content: '⌨️ Slash Command', style: 'background-color: #e8eaf6;' },
+            'command-output': { id: 'command-output', content: '📋 Command Output', style: 'background-color: #efebe9;' },
+            'bash-input': { id: 'bash-input', content: '💻 Bash Input', style: 'background-color: #e8eaf6;' },
+            'bash-output': { id: 'bash-output', content: '📄 Bash Output', style: 'background-color: #efebe9;' }
+        };
+
+        // Build timeline data from messages
+        function buildTimelineData() {
+            let latestTimeString = '1970-01-01 00:00:00';
+            const timelineItems = [];
+            const timelineGroups = [];
+            const usedGroups = new Set();
+
+            // Clear existing mapping
+            timelineIdToElement.clear();
+
+            // Get all messages from the page (including filtered ones - we'll hide them with CSS)
+            const messages = document.querySelectorAll('.message:not(.session-header)');
+
+            messages.forEach((messageEl, index) => {
+                // Extract message data - handle both simple and complex CSS classes
+                const classList = Array.from(messageEl.classList);
+                let messageType = 'system'; // Default fallback
+
+                // Check for sidechain first (sub-assistant messages)
+                if (classList.includes('sidechain')) {
+                    messageType = 'sidechain';
+                } else if (classList.includes('system-warning') || classList.includes('system-error') || classList.includes('system-info')) {
+                    messageType = 'system';
+                } else if (classList.includes('slash-command')) {
+                    messageType = 'slash-command';
+                } else if (classList.includes('command-output')) {
+                    messageType = 'command-output';
+                } else if (classList.includes('bash-input')) {
+                    messageType = 'bash-input';
+                } else if (classList.includes('bash-output')) {
+                    messageType = 'bash-output';
+                } else {
+                    // Look for standard message types
+                    messageType = classList.find(cls =>
+                        ['user', 'assistant', 'tool_use', 'tool_result', 'thinking', 'system', 'image'].includes(cls)
+                    ) ?? 'system';
+                }
+
+                const timestampEl = messageEl.querySelector('.timestamp');
+                if (!timestampEl) return; // Skip if no timestamp
+
+                // Use raw timestamp from data attribute if available, otherwise fall back to text content
+                const rawTimestamp = timestampEl.getAttribute('data-timestamp');
+                const timestamp = rawTimestamp ?? timestampEl.textContent.trim();
+                if (timestamp > latestTimeString) latestTimeString = timestamp;
+
+                // Get message content preview
+                const contentEl = messageEl.querySelector('.content');
+                let content = '';
+                if (contentEl) {
+                    let textContent = contentEl.textContent ?? contentEl.innerText ?? '';
+
+                    // For system messages, try to extract just the message without the prefix
+                    if (messageType === 'system') {
+                        // System messages often have format like "⚠️ System Warning: message content"
+                        const systemMatch = textContent.match(/^[⚠️❌ℹ️]?\s*System\s+\w+:\s*(.+)$/);
+                        if (systemMatch) {
+                            textContent = systemMatch[1];
+                        }
+                    }
+
+                    content = textContent.length > 100 ? textContent.substring(0, 100) + '...' : textContent;
+                }
+
+                // For tool_use messages, try to extract the tool name
+                if (messageType === 'tool_use') {
+                    // Try to extract tool name from JSON content
+                    const nameMatch = content.match(/"name":\s*"([^"]+)"/);
+                    if (nameMatch) {
+                        const toolName = nameMatch[1];
+                        content = toolName + ': ' + content.replace(/"name":\s*"[^"]+",?\s*/, '');
+                    } else {
+                        // Fallback: try to extract from header if available
+                        const headerEl = messageEl.querySelector('.header span');
+                        if (headerEl) {
+                            const headerText = headerEl.textContent ?? '';
+                            const toolMatch = headerText.match(/🛠️\s*(.+) \(Id:.*/);
+                            if (toolMatch) {
+                                content = toolMatch[1].replace("Tool Use: ", "") + (content ? ': ' + content : '');
+                            }
+                        }
+                    }
+                }
+
+                // Add group if not already added
+                if (!usedGroups.has(messageType)) {
+                    timelineGroups.push(messageTypeGroups[messageType]);
+                    usedGroups.add(messageType);
+                }
+
+                // Store mapping for click handling
+                timelineIdToElement.set(index, messageEl);
+
+                // Format tooltip content with proper containment and styling
+                let title = contentEl.innerHTML;
+                title = title.includes("<pre") ? title : `<pre>${title}</pre>`;
+
+                // Clean up collapsible details for tooltip display
+                if (title.includes("<details")) {
+                    title = title.replace(/(<summary>.*<\/summary>)/gs, '').replace(/<details class="collapsible-details">(.*?)<\/details>/gs, (m, p) => p)
+                }
+
+                // Clean up excessive whitespace in pre tags
+                title = title.replace(/<pre([^>]*)>[\s\r\n]+(.*?)[\s\r\n]+<\/pre>/gs, (m, attrs, content) => `<pre${attrs}>${content}</pre>`)
+
+                // Adjust content display based on message type
+                let displayContent = content ?? messageTypeGroups[messageType].content;
+
+                // Check for sidechain context regardless of primary message type
+                // Note: Sidechain user messages (Sub-assistant prompts) are now skipped
+                // since they duplicate the Task tool input prompt
+                if (classList.includes('sidechain')) {
+                    // Override group for sidechain messages, but preserve the content
+                    messageType = 'sidechain';
+
+                    // For sidechain messages, prefix with appropriate icon based on original type
+                    if (classList.includes('assistant')) {
+                        displayContent = '🔗 ' + (content ?? 'Sub-assistant response');
+                    } else if (classList.includes('tool_use')) {
+                        displayContent = '🔗 ' + (content ?? 'Sub-assistant tool use');
+                    } else if (classList.includes('tool_result')) {
+                        displayContent = '🔗 ' + (content ?? 'Sub-assistant tool result');
+                    } else {
+                        displayContent = '🔗 ' + (content ?? 'Sub-assistant');
+                    }
+                }
+
+                // Create timeline item
+                const timelineItem = {
+                    id: index,
+                    content: displayContent,
+                    start: timestamp,
+                    group: messageType,
+                    title,
+                    className: `timeline-item-${messageType}`
+                };
+
+                timelineItems.push(timelineItem);
+            });
+
+            // Set timeline window to show last hour by default, with padding after the last message
+            const timelineEnd = new Date(new Date(latestTimeString).getTime() + 60 * 60 * 1000); // 1 hour after latest
+            const timelineStart = new Date(timelineEnd.getTime() - 2 * 60 * 60 * 1000); // 2 hours total window (1 hour before latest + 1 hour after)
+
+            return { timelineItems, timelineGroups, timelineEnd, timelineStart };
+        }
+
+        // Filter timeline items based on current message filters
+        function applyFilters() {
+            if (!timeline || !groups) return;
+
+            // Get active filter types from filter toggles
+            const activeTypes = Array.from(document.querySelectorAll('.filter-toggle.active'))
+                .map(toggle => toggle.dataset.type);
+
+            // Get all filter toggle types (to know which groups have filter controls)
+            const allFilterTypes = Array.from(document.querySelectorAll('.filter-toggle'))
+                .map(toggle => toggle.dataset.type);
+
+            // Update groups visibility based on filter states
+            // Groups with filter toggles follow toggle state; groups without toggles stay visible
+            const updatedGroups = groups.map(group => ({
+                ...group,
+                visible: allFilterTypes.includes(group.id) ? activeTypes.includes(group.id) : true
+            }));
+
+            // Update timeline groups
+            timeline.setGroups(updatedGroups);
+        }
+
+        // Handle timeline item click - scroll to corresponding message
+        function onTimelineSelect(event) {
+            const selection = timeline.getSelection();
+            if (selection.length > 0) {
+                const itemId = selection[0];
+                const messageEl = timelineIdToElement.get(itemId);
+                if (messageEl) {
+                    // Calculate timeline height for proper scroll positioning
+                    const timelineContainer = document.getElementById('timeline-container');
+                    const timelineHeight = timelineContainer ? timelineContainer.offsetHeight : 0;
+
+                    // Scroll so message top aligns with timeline bottom
+                    const elementTop = messageEl.offsetTop;
+                    const scrollPosition = elementTop - timelineHeight - 10; // 10px padding
+
+                    window.scrollTo({
+                        top: Math.max(0, scrollPosition),
+                        behavior: 'smooth'
+                    });
+
+                    // Highlight the message briefly
+                    messageEl.style.backgroundColor = '#fff3cd';
+                    setTimeout(() => {
+                        messageEl.style.backgroundColor = '';
+                    }, 2000);
+                }
+            }
+        }
+
+        // Initialize timeline
+        function initTimeline() {
+            if (timeline) return; // Already initialized
+
+            console.log('Initializing vis-timeline...');
+
+            const container = document.getElementById('timeline-visualization');
+            if (!container) {
+                console.error('Timeline container not found');
+                return;
+            }
+
+            // Build timeline data
+            const { timelineItems, timelineGroups, timelineEnd, timelineStart } = buildTimelineData();
+            items = timelineItems
+            groups = timelineGroups
+            if (items.length === 0) {
+                console.warn('No timeline items found');
+                return;
+            }
+
+            // Timeline options
+            const options = {
+                height: '100%',
+                stack: true,
+                showCurrentTime: true,
+                zoomMin: 1000 * 1, // 1 second
+                zoomMax: 1000 * 60 * 60 * 24 * 30, // 30 days
+                start: timelineStart,
+                end: timelineEnd,
+                orientation: 'top',
+                align: 'left',
+                tooltip: {
+                    // FIXME: This followMouse doesn't work for some reason and the tooltip box gets cut off for the bottom timeline boxes
+                    followMouse: true,
+                    overflowMethod: 'cap'
+                },
+                margin: {
+                    item: 2,
+                    axis: 2
+                },
+                groupOrder: (a, b) => {
+                    const order = ['user', 'system', 'slash-command', 'command-output', 'bash-input', 'bash-output', 'thinking', 'assistant', 'sidechain', 'tool_use', 'tool_result', 'image'];
+                    return order.indexOf(a.id) - order.indexOf(b.id);
+                }
+            };
+
+            // Create timeline
+            timeline = new vis.Timeline(container, new vis.DataSet(items), new vis.DataSet(groups), options);
+
+            // Make timeline available globally for debugging
+            window.timeline = timeline;
+
+            // Add event listeners
+            timeline.on('select', onTimelineSelect);
+
+            // Apply current filters
+            applyFilters();
+
+            console.log('Timeline initialized with', items.length, 'items and', groups.length, 'groups');
+        }
+
+        // Load vis-timeline library dynamically
+        function loadVisTimeline() {
+            return new Promise((resolve, reject) => {
+                if (window.vis && window.vis.Timeline) {
+                    resolve();
+                    return;
+                }
+
+                console.log('Loading vis-timeline from CDN...');
+
+                // Load CSS first
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'https://unpkg.com/vis-timeline/styles/vis-timeline-graph2d.min.css';
+                document.head.appendChild(link);
+
+                // Load JavaScript
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/vis-timeline/standalone/umd/vis-timeline-graph2d.min.js';
+                script.onload = () => {
+                    console.log('vis-timeline loaded successfully');
+                    isTimelineLoaded = true;
+                    resolve();
+                };
+                script.onerror = () => {
+                    console.error('Failed to load vis-timeline');
+                    reject(new Error('Failed to load vis-timeline'));
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        // Toggle timeline visibility
+        function toggleTimeline() {
+            const container = document.getElementById('timeline-container');
+            const button = document.getElementById('toggleTimeline');
+
+            if (container.style.display === 'none') {
+                // Show timeline
+                button.classList.add('active');
+                button.title = 'Hide timeline';
+                button.textContent = '🗓️';
+
+                // Load vis-timeline if needed and show timeline
+                loadVisTimeline().then(() => {
+                    container.style.display = 'block';
+                    // Set default height if not already set
+                    if (!container.style.height) {
+                        container.style.height = '30vh';
+                    }
+                    // Wait for container to be visible, then initialize
+                    setTimeout(() => {
+                        initTimeline();
+                        initTimelineResize();
+                    }, 100);
+                }).catch(error => {
+                    console.error('Error loading timeline:', error);
+                    alert('Failed to load timeline. Please check your internet connection.');
+                    container.style.display = 'none';
+                    button.classList.remove('active');
+                    button.title = 'Show timeline';
+                    button.textContent = '📆';
+                });
+            } else {
+                // Hide timeline
+                container.style.display = 'none';
+                button.classList.remove('active');
+                button.title = 'Show timeline';
+                button.textContent = '📆';
+            }
+        }
+
+        // Update timeline position when filter bar is toggled
+        function updateTimelinePosition() {
+            const container = document.getElementById('timeline-container');
+            const filterToolbar = document.querySelector('.filter-toolbar');
+
+            if (container && filterToolbar) {
+                const filterHeight = filterToolbar.offsetHeight;
+                const computedStyle = getComputedStyle(filterToolbar);
+                const isFilterVisible = computedStyle.display !== 'none' &&
+                    computedStyle.visibility !== 'hidden' &&
+                    filterHeight > 0;
+
+                container.style.top = isFilterVisible ? `${filterHeight}px` : '0px';
+            }
+        }
+
+        // Initialize timeline resizing functionality
+        function initTimelineResize() {
+            const container = document.getElementById('timeline-container');
+            const resizeHandle = document.getElementById('timeline-resize-handle');
+
+            if (!container || !resizeHandle) return;
+
+            let startY = 0;
+            let startHeight = 0;
+
+            function handleMouseDown(e) {
+                isResizing = true;
+                startY = e.clientY;
+                startHeight = container.offsetHeight;
+
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+
+                // Prevent text selection during resize
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            }
+
+            function handleMouseMove(e) {
+                if (!isResizing) return;
+
+                const deltaY = e.clientY - startY;
+                const newHeight = Math.max(150, Math.min(window.innerHeight * 0.8, startHeight + deltaY));
+
+                container.style.height = newHeight + 'px';
+
+                // Trigger timeline redraw if needed
+                if (timeline) {
+                    timeline.redraw();
+                }
+            }
+
+            function handleMouseUp() {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+                document.body.style.userSelect = '';
+            }
+
+            // Add mouse event listeners
+            resizeHandle.addEventListener('mousedown', handleMouseDown);
+
+            // Also allow resizing by dragging the container bottom edge
+            container.addEventListener('mousedown', function (e) {
+                const rect = container.getBoundingClientRect();
+                if (e.clientY >= rect.bottom - 8) {
+                    handleMouseDown(e);
+                }
+            });
+        }
+
+        // Export functions to global scope
+        window.toggleTimeline = toggleTimeline;
+        window.applyTimelineFilters = applyFilters;
+        window.updateTimelinePosition = updateTimelinePosition;
+
+        // Hook into existing systems
+        document.addEventListener('DOMContentLoaded', function () {
+            // Listen for filter changes
+            const filterToggles = document.querySelectorAll('.filter-toggle');
+            filterToggles.forEach(toggle => {
+                toggle.addEventListener('click', function () {
+                    setTimeout(applyFilters, 50);
+                });
+            });
+
+            // Listen for select all/none buttons
+            const selectAllButton = document.getElementById('selectAll');
+            const selectNoneButton = document.getElementById('selectNone');
+            if (selectAllButton) {
+                selectAllButton.addEventListener('click', function () {
+                    setTimeout(applyFilters, 50);
+                });
+            }
+            if (selectNoneButton) {
+                selectNoneButton.addEventListener('click', function () {
+                    setTimeout(applyFilters, 50);
+                });
+            }
+
+            // Listen for filter toolbar visibility changes
+            const filterButton = document.getElementById('filterMessages');
+            const closeFiltersButton = document.getElementById('closeFilters');
+
+            if (filterButton) {
+                filterButton.addEventListener('click', function () {
+                    setTimeout(updateTimelinePosition, 50);
+                });
+            }
+
+            if (closeFiltersButton) {
+                closeFiltersButton.addEventListener('click', function () {
+                    setTimeout(updateTimelinePosition, 50);
+                });
+            }
+
+            // Update timeline position on window resize
+            window.addEventListener('resize', updateTimelinePosition);
+        });
+    })();
+</script>

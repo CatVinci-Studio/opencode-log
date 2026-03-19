@@ -1,0 +1,55 @@
+[project]
+name = "opencode-log"
+version = "0.3.0"
+description = "Generate browsable HTML logs from OpenCode local storage"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Topic :: Software Development :: Build Tools",
+]
+keywords = ["opencode", "logs", "html", "cli", "transcript"]
+authors = [
+    { name = "opencode-log contributors" },
+]
+dependencies = [
+    "click>=8.1.7",
+    "jinja2>=3.1.4",
+    "dateparser>=1.2.0",
+    "pygments>=2.19.0",
+    "mistune>=3.1.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/CatVinci-Studio/opencode-log"
+Repository = "https://github.com/CatVinci-Studio/opencode-log"
+Issues = "https://github.com/CatVinci-Studio/opencode-log/issues"
+Documentation = "https://catvinci-studio.github.io/opencode-log/"
+
+[project.scripts]
+opencode-log = "opencode_log.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = [
+    "/out",
+    "/opencode-logs",
+    "/.opencode-log-cache",
+    "/**/__pycache__",
+    "/**/*.pyc",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+]

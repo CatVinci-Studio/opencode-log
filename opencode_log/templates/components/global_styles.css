@@ -1,0 +1,237 @@
+/* Global styles shared across all templates */
+
+/* CSS Variables for shared colors and consistent theming */
+:root {
+    /* Base colors */
+    --code-bg-color: #f5f1e8;
+    --tool-param-sep-color: #4b494822;
+
+    /* Dimmed/transparent variants (66 = ~40% opacity) */
+    --white-dimmed: #ffffff66;
+    --highlight-dimmed: #e3f2fd66;
+    --assistant-dimmed: #9c27b066;
+    --info-dimmed: #2196f366;
+    --warning-dimmed: #d9810066;
+    --success-dimmed: #4caf5066;
+    --error-dimmed: #f4433666;
+    --neutral-dimmed: #f8f9fa66;
+    --tool-input-dimmed: #fff3cd66;
+    --thinking-dimmed: #f0f0f066;
+    --tool-result-dimmed: #e8f5e866;
+    --session-bg-dimmed: #e8f4fd66;
+    --ide-notification-dimmed: #d2d6d966;
+
+    /* Fully transparent variants (88 = ~53% opacity) */
+    --highlight-semi: #e3f2fd88;
+    --error-semi: #ffebee88;
+    --neutral-semi: #f8f9fa88;
+
+    /* Slightly transparent variants (55 = ~33% opacity) */
+    --highlight-light: #e3f2fd55;
+
+    /* Solid colors for message types */
+    --user-color: #ff9800;
+    --user-dimmed: #ff980066;
+    --assistant-color: #9c27b0;
+    --system-color: #d98100;
+    --system-warning-color: #2196f3;
+    --system-error-color: #f44336;
+    --tool-use-color: #4caf50;
+
+    /* Question/answer tool colors */
+    --question-accent: #f5a623;
+    --question-bg: #fffbf0;
+    --answer-accent: #4caf50;
+    --answer-bg: #fffbf0;
+
+    /* Priority palette (purple intensity - darker = more urgent) */
+    --priority-600: #7c3aed;
+    --priority-400: #a78bfa;
+    --priority-300: #c4b5fd;
+
+    /* Priority colors for todos */
+    --priority-high: var(--priority-600);
+    --priority-medium: var(--priority-400);
+    --priority-low: var(--priority-300);
+
+    /* Status colors */
+    --status-in-progress: #fff3cd;
+    --status-completed: #d4edda;
+
+    /* Plan/todo accent color */
+    --plan-accent: #6c63ff;
+    --todo-accent: #4169e1;
+
+    /* Solid colors for text and accents */
+    --text-primary: #333;
+    --text-muted: #666;
+    --text-secondary: #495057;
+    --fold-color: #888;
+
+    /* Border colors */
+    --border-light: #e0e0e0;
+    --border-separator: #f0f3f6;
+
+    /* Background colors */
+    --bg-card: #ffffff66;
+    --bg-hover: #f8f9fa;
+    --bg-neutral: #f8f9fa;
+
+    /* Layout spacing */
+    --message-padding: 1em;
+
+    /* Font families */
+    --font-monospace: 'Fira Code', 'Monaco', 'Consolas', 'SF Mono', 'Inconsolata', 'Droid Sans Mono', 'Source Code Pro', 'Ubuntu Mono', 'Cascadia Code', 'Menlo', monospace;
+    --font-ui: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body {
+    font-family: var(--font-ui);
+    line-height: 1.5;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 10px;
+    background: linear-gradient(90deg, #f3d6d2, #f1dcce, #f0e4ca, #eeecc7, #e3ecc3, #d5eac0, #c6e8bd, #b9e6bc, #b6e3c5, #b3e1cf);
+    color: var(--text-primary);
+}
+
+h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+}
+
+/* Common typography */
+
+code {
+    background-color: var(--code-bg-color);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: var(--font-monospace);
+    line-height: 1.5;
+}
+
+
+pre {
+    background-color: #12121212;
+    padding: 10px;
+    border-radius: 5px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-word;
+    font-family: var(--font-monospace);
+    line-height: 1.5;
+}
+
+/* Summary stats layout (used in index.html) */
+.summary-stats-flex {
+    display: flex;
+    gap: 3em;
+}
+
+/* Common card styling */
+.card-base {
+    background-color: #ffffff66;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: -7px -7px 10px #eeeeee44, 7px 7px 10px #00000011;
+    border-left: #ffffff66 1px solid;
+    border-top: #ffffff66 1px solid;
+    border-bottom: #00000017 1px solid;
+    border-right: #00000017 1px solid;
+}
+
+.card-base:hover {
+    box-shadow: -10px -10px 15px #eeeeee66, 10px 10px 15px #00000022;
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+/* Common header styling */
+.header {
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.header > span:first-child {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Tool summary in header */
+.tool-summary {
+    font-weight: normal;
+    color: var(--text-muted);
+    font-size: 0.95em;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    display: inline;
+}
+
+/* Timestamps */
+.timestamp {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    font-weight: normal;
+}
+
+/* Floating action buttons */
+.floating-btn {
+    position: fixed;
+    right: 20px;
+    background-color: var(--session-bg-dimmed);
+    color: var(--text-muted);
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 1.2em;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s, transform 0.2s;
+    z-index: 1000;
+    text-decoration: none;
+}
+
+.floating-btn:hover {
+    background-color: #e8f4fdcc;
+    transform: translateY(-2px);
+}
+
+.floating-btn:visited {
+    color: var(--text-muted);
+}
+
+/* Floating buttons positioning */
+.scroll-top.floating-btn {
+    bottom: 20px;
+}
+
+.toggle-details.floating-btn {
+    bottom: 80px;
+}
+
+.filter-messages.floating-btn {
+    bottom: 140px;
+}
+
+.timeline-toggle.floating-btn {
+    bottom: 200px;
+}
+
+@media (max-width: 1280px) {
+    .header > span:first-child {
+        flex: auto;
+    }
+}

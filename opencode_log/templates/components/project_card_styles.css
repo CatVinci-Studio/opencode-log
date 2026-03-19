@@ -1,0 +1,138 @@
+/* Project card styles for index page */
+.project-list {
+    display: grid;
+    gap: 15px;
+}
+
+.project-card {
+    background-color: #ffffff66;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: -7px -7px 10px #eeeeee44, 7px 7px 10px #00000011;
+    border-left: #ffffff66 1px solid;
+    border-top: #ffffff66 1px solid;
+    border-bottom: #00000017 1px solid;
+    border-right: #00000017 1px solid;
+}
+
+.project-card:hover {
+    box-shadow: -10px -10px 15px #eeeeee66, 10px 10px 15px #00000022;
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+.project-name {
+    font-size: 1.2em;
+    font-weight: 600;
+    margin-bottom: 10px;
+    word-break: break-all;
+}
+
+.project-name a {
+    text-decoration: none;
+    color: var(--system-warning-color);
+}
+
+.project-name a:hover {
+    text-decoration: underline;
+}
+
+.transcript-link-hint {
+    font-size: 0.6em;
+    color: var(--text-muted);
+}
+
+.project-stats {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Summary section */
+.summary {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 15px;
+    background-color: #ffffff66;
+    border-radius: 8px;
+    box-shadow: -7px -7px 10px #eeeeee44, 7px 7px 10px #00000011;
+    border-left: #ffffff66 1px solid;
+    border-top: #ffffff66 1px solid;
+    border-bottom: #00000017 1px solid;
+    border-right: #00000017 1px solid;
+}
+
+.summary-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.summary-stat {
+    text-align: center;
+}
+
+.summary-stat .number {
+    font-size: 1.5em;
+    font-weight: 600;
+    color: var(--system-warning-color);
+}
+
+.summary-stat .label {
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+
+/* Session details styling within project cards */
+.project-sessions details {
+    margin-top: 15px;
+}
+
+.project-sessions details summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 1.1em;
+    font-weight: 600;
+    padding: 8px 0;
+}
+
+.project-sessions details summary:hover {
+    color: var(--system-warning-color);
+}
+
+.project-sessions details[open] summary {
+    margin-bottom: 10px;
+}
+
+/* Archived project styling */
+.project-card.archived {
+    opacity: 0.6;
+    background-color: #f5f5f522;
+}
+
+.project-card.archived:hover {
+    opacity: 0.8;
+}
+
+.archived-badge {
+    display: inline-block;
+    background-color: #888;
+    color: white;
+    font-size: 0.65em;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 10px;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}

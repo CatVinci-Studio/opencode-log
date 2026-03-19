@@ -1,0 +1,186 @@
+/* TodoWrite tool styling */
+.todo-write {
+    background-color: var(--highlight-dimmed);
+    border-left: var(--todo-accent) 3px solid;
+    font-family: var(--font-ui);
+}
+
+.tool-header {
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+    font-size: 1.1em;
+}
+
+.todo-list {
+    background-color: var(--bg-card);
+    border-radius: 6px;
+    padding: 8px;
+    box-shadow: -7px -7px 10px #eeeeee44, 7px 7px 10px #00000011;
+    border-left: var(--bg-card) 1px solid;
+    border-top: var(--bg-card) 1px solid;
+    border-bottom: #00000017 1px solid;
+    border-right: #00000017 1px solid;
+}
+
+.todo-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--border-separator);
+    transition: background-color 0.2s ease;
+}
+
+.todo-item:last-child {
+    border-bottom: none;
+}
+
+.todo-item:hover {
+    background-color: var(--bg-hover);
+}
+
+.todo-item.completed .todo-content {
+    text-decoration: line-through;
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.todo-item.pending .todo-content {
+    font-weight: normal;
+}
+
+.todo-status {
+    font-size: 1.1em;
+    line-height: 1;
+}
+
+.todo-content {
+    flex: 1;
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 90%;
+    font-family: var(--font-ui);
+}
+
+.todo-id {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    font-weight: normal;
+}
+
+/* Priority-based left border colors */
+.todo-item.high {
+    border-left: 3px solid var(--priority-high);
+}
+
+.todo-item.medium {
+    border-left: 3px solid transparent;
+}
+
+.todo-item.low {
+    border-left: 3px solid var(--priority-low);
+}
+
+/* Status-based background tints */
+.todo-item.in_progress {
+    background-color: var(--status-in-progress);
+}
+
+.todo-item.completed {
+    background-color: var(--status-completed);
+}
+
+/* AskUserQuestion tool styling */
+.askuserquestion-content {
+    font-family: var(--font-ui);
+    padding: 8px 0;
+}
+
+.question-block {
+    margin-bottom: 16px;
+    padding: 12px;
+    background-color: var(--question-bg);
+    border-radius: 6px;
+    border-left: 3px solid var(--assistant-color);
+}
+
+.question-block:last-child {
+    margin-bottom: 0;
+}
+
+/* Answered questions in result */
+.question-block.answered {
+    background-color: var(--answer-bg);
+    border-left-color: var(--user-color);
+}
+
+.question-header {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.question-text {
+    font-size: 1.1em;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+
+.answer-text {
+    font-size: 1.05em;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+/* Q: and A: labels */
+.qa-label {
+    font-weight: 700;
+}
+
+.question-options-hint {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 6px;
+}
+
+.question-options {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.question-option {
+    padding: 8px 12px;
+    margin: 4px 0;
+    background-color: #fff;
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+}
+
+.question-option strong {
+    color: var(--text-primary);
+}
+
+.question-option .option-desc {
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+
+/* ExitPlanMode tool styling */
+.plan-content {
+    font-family: var(--font-ui);
+}
+
+.plan-content.markdown {
+    background-color: var(--bg-neutral);
+    border-radius: 6px;
+    padding: 12px;
+}

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+
+dist/
+build/
+*.egg-info/
+
+out/
+opencode-logs/
+.opencode-log-cache/

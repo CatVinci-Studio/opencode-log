@@ -1,0 +1,106 @@
+/* Session navigation styles */
+.navigation {
+    background-color: var(--bg-neutral);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+    box-shadow: -7px -7px 10px #eeeeee44, 7px 7px 10px #00000011;
+    border-left: var(--white-dimmed) 1px solid;
+    border-top: var(--white-dimmed) 1px solid;
+    border-bottom: #00000017 1px solid;
+    border-right: #00000017 1px solid;
+}
+
+.navigation h2 {
+    margin: 0 0 12px 0;
+    font-size: 1.2em;
+    color: var(--text-secondary);
+}
+
+.session-nav {
+    margin-top: 1em;
+    display: grid;
+    gap: 8px;
+}
+
+.session-link {
+    padding: 8px 12px;
+    background-color: var(--white-dimmed);
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    transition: background-color 0.2s;
+}
+
+.session-link:hover {
+    background-color: #ffffff99;
+}
+
+.session-link-title {
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.session-link-meta {
+    font-size: 0.8em;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+/* Project-specific session navigation */
+.project-sessions {
+    margin-top: 15px;
+    border-top: 1px solid #dee2e6;
+    padding-top: 15px;
+}
+
+.project-sessions h4 {
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.project-sessions .session-link {
+    padding: 6px 8px;
+    font-size: 0.8em;
+    margin-bottom: 4px;
+}
+
+.project-sessions .session-link-title {
+    font-size: 0.85em;
+}
+
+.project-sessions .session-link-meta {
+    font-size: 0.75em;
+}
+
+/* Combined transcript link */
+.combined-transcript-link {
+    display: inline-block;
+    padding: 8px 12px;
+    background-color: var(--white-dimmed);
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.combined-transcript-link:hover {
+    background-color: #ffffff99;
+    text-decoration: none;
+}
+
+/* Navigation hints */
+.nav-hint {
+    font-size: 0.75em;
+}
+
+/* Session preview styling */
+.session-preview {
+    font-size: 0.75em;
+    line-height: 1.3;
+}

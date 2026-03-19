@@ -1,0 +1,774 @@
+<!-- Search Component -->
+{% if not is_transcript %}
+<!-- Full search component for index page -->
+<div id="searchContainer" class="search-container">
+    <div class="search-input-wrapper">
+        <input type="text"
+               id="searchInput"
+               class="search-input"
+               placeholder="Search conversations..."
+               autocomplete="off">
+        <span class="search-hint">Ctrl+F</span>
+        <button id="searchClear" class="search-clear" title="Clear search">✕</button>
+    </div>
+
+    <div id="searchResultsInfo" class="search-results-info">
+        <div class="search-navigation">
+            <span id="searchResultCount">No results</span>
+            <button id="searchPrev" class="search-nav-btn" disabled title="Previous match (Shift+F3)">↑</button>
+            <button id="searchNext" class="search-nav-btn" disabled title="Next match (F3)">↓</button>
+        </div>
+    </div>
+
+    <div class="search-options">
+        <div class="search-option">
+            <input type="checkbox" id="searchRegex">
+            <label for="searchRegex">Regex</label>
+        </div>
+        <div class="search-option">
+            <input type="checkbox" id="searchInFiltered" checked>
+            <label for="searchInFiltered">Search only visible</label>
+        </div>
+    </div>
+</div>
+
+<!-- Search Results Panel (for index page) -->
+<div id="searchResultsPanel" class="search-results-panel">
+    <div class="search-results-header">
+        <span class="search-results-title">Search Results</span>
+        <button id="searchResultsClose" class="search-close-btn" title="Close">✕</button>
+    </div>
+    <div id="searchResultsContent">
+        <!-- Results will be dynamically inserted here -->
+    </div>
+</div>
+{% endif %}
+
+<script>
+(function() {
+    // Search state
+    let searchState = {
+        query: '',
+        useRegex: false,
+        searchInFiltered: true,
+        currentMatchIndex: 0,
+        matches: [],
+        searchIndex: null,
+        isIndexPage: window.location.pathname.includes('index.html') ||
+                      window.location.pathname.endsWith('projects/') ||
+                      (!window.location.pathname.includes('.html') && window.location.pathname.endsWith('/'))
+    };
+
+    // DOM elements
+    const searchContainer = document.getElementById('searchContainer');
+    const searchInput = document.getElementById('searchInput');
+    const searchClear = document.getElementById('searchClear');
+    const searchHint = document.querySelector('.search-hint');
+    const searchResultsInfo = document.getElementById('searchResultsInfo');
+    const searchResultCount = document.getElementById('searchResultCount');
+    const searchPrev = document.getElementById('searchPrev');
+    const searchNext = document.getElementById('searchNext');
+    const searchRegex = document.getElementById('searchRegex');
+    const searchInFiltered = document.getElementById('searchInFiltered');
+    const searchResultsPanel = document.getElementById('searchResultsPanel');
+    const searchResultsContent = document.getElementById('searchResultsContent');
+    const searchResultsClose = document.getElementById('searchResultsClose');
+
+    // Initialize search
+    function initSearch() {
+        // Build search index from page content
+        buildSearchIndex();
+
+        // Restore previous search state from localStorage
+        restoreSearchState();
+
+        // Set up event listeners
+        setupEventListeners();
+
+        // Initialize UI state
+        updateSearchInputState();
+    }
+
+    // Build search index from current page
+    function buildSearchIndex() {
+        searchState.searchIndex = [];
+        
+        if (searchState.isIndexPage) {
+            // Index page: index projects with individual sessions
+            document.querySelectorAll('.project-card').forEach(card => {
+                const projectName = card.querySelector('.project-name a')?.textContent || '';
+                const projectStats = card.querySelector('.project-stats')?.textContent || '';
+                const projectLink = card.querySelector('.project-name a')?.getAttribute('href') || '';
+                
+                // Index the project itself
+                searchState.searchIndex.push({
+                    type: 'project',
+                    name: projectName,
+                    stats: projectStats,
+                    element: card,
+                    link: projectLink,
+                    searchText: `${projectName} ${projectStats}`,
+                    originalText: `${projectName} ${projectStats}`
+                });
+                
+                // Index individual sessions within the project
+                card.querySelectorAll('.session-link').forEach(link => {
+                    const sessionText = link.textContent || '';
+                    const sessionHref = link.getAttribute('href') || '';
+                    const sessionPreview = link.querySelector('.session-preview')?.textContent?.trim() || '';
+                    const sessionMeta = link.querySelector('.session-link-meta')?.textContent || '';
+                    
+                    searchState.searchIndex.push({
+                        type: 'session',
+                        projectName: projectName,
+                        sessionText: sessionText,
+                        sessionPreview: sessionPreview,
+                        sessionMeta: sessionMeta,
+                        element: card,
+                        link: sessionHref,
+                        searchText: `${projectName} ${sessionText} ${sessionPreview} ${sessionMeta}`,
+                        originalText: `${sessionText} ${sessionPreview}`
+                    });
+                });
+            });
+        } else {
+            // Transcript page: index messages
+            document.querySelectorAll('.message:not(.session-header)').forEach(message => {
+                const header = message.querySelector('.header span')?.textContent || '';
+                const content = message.querySelector('.content')?.textContent || '';
+                const timestamp = message.querySelector('.timestamp')?.textContent || '';
+                const sessionId = findSessionForMessage(message);
+                
+                searchState.searchIndex.push({
+                    type: 'message',
+                    header: header,
+                    content: content,
+                    timestamp: timestamp,
+                    sessionId: sessionId,
+                    element: message,
+                    searchText: `${header} ${content}`.toLowerCase(),
+                    originalText: `${header} ${content}`
+                });
+            });
+        }
+    }
+
+    // Find session ID for a message
+    function findSessionForMessage(messageElement) {
+        let prev = messageElement.previousElementSibling;
+        while (prev) {
+            if (prev.classList.contains('session-header')) {
+                return prev.dataset.sessionId || null;
+            }
+            prev = prev.previousElementSibling;
+        }
+        return null;
+    }
+
+    // Create excerpt with context around matches
+    function createExcerpt(text, query, contextLength = 50) {
+        if (!text || !query) return '';
+        
+        // Create search pattern (always case-insensitive)
+        let pattern;
+        try {
+            if (searchState.useRegex) {
+                pattern = new RegExp(query, 'gi');
+            } else {
+                const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                pattern = new RegExp(escapedQuery, 'gi');
+            }
+        } catch (e) {
+            return text.substring(0, 100) + (text.length > 100 ? '...' : '');
+        }
+
+        const matches = [...text.matchAll(pattern)];
+        if (matches.length === 0) {
+            return text.substring(0, 100) + (text.length > 100 ? '...' : '');
+        }
+
+        // Collect all excerpts with context
+        const excerpts = [];
+        const processedRanges = [];
+
+        matches.forEach(match => {
+            const start = Math.max(0, match.index - contextLength);
+            const end = Math.min(text.length, match.index + match[0].length + contextLength);
+            
+            // Check for overlap with existing ranges
+            const overlaps = processedRanges.find(range => 
+                (start >= range.start && start <= range.end) ||
+                (end >= range.start && end <= range.end) ||
+                (start <= range.start && end >= range.end)
+            );
+
+            if (overlaps) {
+                // Extend the existing range
+                overlaps.start = Math.min(overlaps.start, start);
+                overlaps.end = Math.max(overlaps.end, end);
+            } else {
+                processedRanges.push({ start, end });
+            }
+        });
+
+        // Sort by start position and create excerpts
+        processedRanges.sort((a, b) => a.start - b.start);
+        
+        processedRanges.forEach(range => {
+            let excerpt = text.substring(range.start, range.end);
+            
+            // Add ellipsis if needed
+            if (range.start > 0) excerpt = '...' + excerpt;
+            if (range.end < text.length) excerpt = excerpt + '...';
+            
+            excerpts.push(excerpt);
+        });
+
+        return excerpts.join(' ');
+    }
+
+    // Count actual matches in text (always case-insensitive)
+    function countMatches(text, query) {
+        if (!text || !query) return 0;
+
+        try {
+            let pattern;
+            if (searchState.useRegex) {
+                pattern = new RegExp(query, 'gi');
+            } else {
+                const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                pattern = new RegExp(escapedQuery, 'gi');
+            }
+
+            const matches = text.match(pattern);
+            return matches ? matches.length : 0;
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    // Toggle search hint and clear button visibility based on input content
+    function updateSearchInputState() {
+        const hasContent = searchInput && searchInput.value.length > 0;
+
+        // Toggle hint visibility
+        if (searchHint) {
+            if (hasContent) {
+                searchHint.classList.add('hidden');
+            } else {
+                searchHint.classList.remove('hidden');
+            }
+        }
+
+        // Toggle clear button visibility
+        if (searchClear) {
+            if (hasContent) {
+                searchClear.classList.add('visible');
+            } else {
+                searchClear.classList.remove('visible');
+            }
+        }
+    }
+
+    // Setup event listeners
+    function setupEventListeners() {
+        // Search input
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            updateSearchInputState();
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => performSearch(e.target.value), 300);
+        });
+
+        // Clear button
+        searchClear.addEventListener('click', clearSearch);
+
+        // Search options
+        searchRegex.addEventListener('change', () => {
+            searchState.useRegex = searchRegex.checked;
+            if (searchState.query) performSearch(searchState.query);
+        });
+
+        searchInFiltered.addEventListener('change', () => {
+            searchState.searchInFiltered = searchInFiltered.checked;
+            if (searchState.query) performSearch(searchState.query);
+        });
+
+        // Navigation buttons
+        searchPrev.addEventListener('click', () => navigateMatch(-1));
+        searchNext.addEventListener('click', () => navigateMatch(1));
+
+        // Close results panel
+        if (searchResultsClose) {
+            searchResultsClose.addEventListener('click', () => {
+                searchResultsPanel.classList.remove('visible');
+            });
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', handleKeyboardShortcuts);
+    }
+
+    // Perform search
+    let isSearching = false;
+    function performSearch(query) {
+        // Prevent concurrent searches
+        if (isSearching) return;
+        isSearching = true;
+
+        searchState.query = query;
+        searchClear.classList.toggle('visible', query.length > 0);
+        
+        // Clear previous highlights
+        clearHighlights();
+        
+        if (!query) {
+            searchState.matches = [];
+            updateSearchUI();
+            if (searchState.isIndexPage && searchResultsPanel) {
+                searchResultsPanel.classList.remove('visible');
+            }
+            isSearching = false;
+            return;
+        }
+
+        // Save search state
+        saveSearchState();
+        
+        // Create search pattern (always case-insensitive)
+        let searchPattern;
+        try {
+            if (searchState.useRegex) {
+                searchPattern = new RegExp(query, 'gi');
+            } else {
+                const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                searchPattern = new RegExp(escapedQuery, 'gi');
+            }
+        } catch (e) {
+            // Invalid regex
+            searchState.matches = [];
+            updateSearchUI();
+            isSearching = false;
+            return;
+        }
+
+        // Search through index
+        searchState.matches = [];
+        let totalMatchCount = 0;
+        
+        searchState.searchIndex.forEach(item => {
+            // Check if element is visible (for transcript pages with filters)
+            if (!searchState.isIndexPage && searchState.searchInFiltered) {
+                if (item.element.classList.contains('filtered-hidden')) {
+                    return;
+                }
+            }
+
+            // Always use case-insensitive search
+            const searchText = item.searchText.toLowerCase();
+            const searchQuery = query.toLowerCase();
+
+            // Check if item matches the search
+            let matchesItem = false;
+            if (searchState.useRegex) {
+                searchPattern.lastIndex = 0;  // Reset lastIndex before each test to avoid skipping matches
+                matchesItem = searchPattern.test(searchText);
+            } else {
+                matchesItem = searchText.includes(searchQuery);
+            }
+
+            if (matchesItem) {
+                // Count actual matches in this item
+                const matchCount = countMatches(item.originalText || item.searchText, query);
+                totalMatchCount += matchCount;
+                
+                // Add match count and excerpt to the item
+                const matchItem = {
+                    ...item,
+                    matchCount: matchCount,
+                    excerpt: createExcerpt(item.originalText || item.searchText, query)
+                };
+                
+                searchState.matches.push(matchItem);
+                
+                // Highlight matches in the element
+                if (!searchState.isIndexPage) {
+                    highlightInElement(item.element, searchPattern);
+                }
+            }
+        });
+        
+        searchState.totalMatchCount = totalMatchCount;
+
+        searchState.currentMatchIndex = searchState.matches.length > 0 ? 0 : -1;
+        updateSearchUI();
+        
+        // Show results panel for index page
+        if (searchState.isIndexPage && searchResultsPanel) {
+            displayIndexSearchResults();
+        }
+        
+        // Navigate to first match
+        if (searchState.matches.length > 0 && !searchState.isIndexPage) {
+            navigateToMatch(0);
+        }
+
+        // Reset searching flag
+        isSearching = false;
+    }
+
+    // Highlight text in element
+    function highlightInElement(element, pattern) {
+        const walker = document.createTreeWalker(
+            element,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+
+        const textNodes = [];
+        let node;
+        while (node = walker.nextNode()) {
+            if (node.nodeValue.trim()) {
+                textNodes.push(node);
+            }
+        }
+
+        textNodes.forEach(textNode => {
+            const text = textNode.nodeValue;
+            const matches = [...text.matchAll(pattern)];
+            
+            if (matches.length > 0) {
+                const fragment = document.createDocumentFragment();
+                let lastIndex = 0;
+                
+                matches.forEach(match => {
+                    // Add text before match
+                    if (match.index > lastIndex) {
+                        fragment.appendChild(
+                            document.createTextNode(text.substring(lastIndex, match.index))
+                        );
+                    }
+                    
+                    // Add highlighted match
+                    const span = document.createElement('span');
+                    span.className = 'search-highlight';
+                    span.textContent = match[0];
+                    fragment.appendChild(span);
+                    
+                    lastIndex = match.index + match[0].length;
+                });
+                
+                // Add remaining text
+                if (lastIndex < text.length) {
+                    fragment.appendChild(
+                        document.createTextNode(text.substring(lastIndex))
+                    );
+                }
+                
+                textNode.parentNode.replaceChild(fragment, textNode);
+            }
+        });
+    }
+
+    // Clear all highlights
+    function clearHighlights() {
+        document.querySelectorAll('.search-highlight').forEach(highlight => {
+            const parent = highlight.parentNode;
+            parent.replaceChild(document.createTextNode(highlight.textContent), highlight);
+            parent.normalize();
+        });
+    }
+
+    // Navigate between matches
+    function navigateMatch(direction) {
+        if (searchState.matches.length === 0) return;
+        
+        searchState.currentMatchIndex += direction;
+        
+        if (searchState.currentMatchIndex < 0) {
+            searchState.currentMatchIndex = searchState.matches.length - 1;
+        } else if (searchState.currentMatchIndex >= searchState.matches.length) {
+            searchState.currentMatchIndex = 0;
+        }
+        
+        navigateToMatch(searchState.currentMatchIndex);
+    }
+
+    // Navigate to specific match
+    function navigateToMatch(index) {
+        if (index < 0 || index >= searchState.matches.length) return;
+        
+        // Update current highlight
+        document.querySelectorAll('.search-highlight.current').forEach(el => {
+            el.classList.remove('current');
+        });
+        
+        const match = searchState.matches[index];
+        const highlights = match.element.querySelectorAll('.search-highlight');
+        if (highlights.length > 0) {
+            highlights[0].classList.add('current');
+            highlights[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            match.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        updateSearchUI();
+    }
+
+    // Display search results for index page
+    function displayIndexSearchResults() {
+        if (!searchResultsPanel || !searchResultsContent) return;
+        
+        searchResultsPanel.classList.add('visible');
+        
+        if (searchState.matches.length === 0) {
+            searchResultsContent.innerHTML = '<div class="search-no-results">No results found</div>';
+            return;
+        }
+        
+        // Group results by project and type
+        const groupedResults = {};
+        searchState.matches.forEach(match => {
+            const key = match.projectName || match.name || 'Unknown';
+            if (!groupedResults[key]) {
+                groupedResults[key] = { projects: [], sessions: [] };
+            }
+            
+            if (match.type === 'project') {
+                groupedResults[key].projects.push(match);
+            } else if (match.type === 'session') {
+                groupedResults[key].sessions.push(match);
+            }
+        });
+        
+        let html = '';
+        Object.entries(groupedResults).forEach(([projectName, groups]) => {
+            const totalMatches = [...groups.projects, ...groups.sessions];
+            const totalMatchCount = totalMatches.reduce((sum, match) => sum + match.matchCount, 0);
+            
+            html += `
+                <div class="search-result-group">
+                    <div class="search-result-group-title">
+                        ${projectName}
+                        <span class="search-result-count">${totalMatchCount} matches in ${totalMatches.length} items</span>
+                    </div>
+            `;
+            
+            // Show project matches first
+            groups.projects.forEach(match => {
+                html += `
+                    <div class="search-result-item">
+                        <a href="${match.link}">
+                            <div class="search-result-session">📁 Project Overview</div>
+                            <div class="search-result-excerpt">
+                                ${highlightText(match.excerpt, searchState.query)}
+                            </div>
+                            <div class="search-result-meta">
+                                <span>${match.matchCount} matches</span>
+                                <span>${match.stats}</span>
+                            </div>
+                        </a>
+                    </div>
+                `;
+            });
+            
+            // Show session matches
+            groups.sessions.forEach(match => {
+                const sessionId = match.link.split('/').pop().replace('session-', '').replace('.html', '').substring(0, 8);
+                html += `
+                    <div class="search-result-item">
+                        <a href="${match.link}">
+                            <div class="search-result-session">💬 Session ${sessionId}</div>
+                            <div class="search-result-excerpt">
+                                ${highlightText(match.excerpt, searchState.query)}
+                            </div>
+                            <div class="search-result-meta">
+                                <span>${match.matchCount} matches</span>
+                                <span>${match.sessionMeta}</span>
+                            </div>
+                        </a>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        });
+        
+        searchResultsContent.innerHTML = html;
+    }
+
+    // Highlight text in search results (always case-insensitive)
+    function highlightText(text, query) {
+        if (!query) return text;
+
+        const pattern = searchState.useRegex ?
+            new RegExp(query, 'gi') :
+            new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+
+        return text.replace(pattern, match => `<span class="search-highlight">${match}</span>`);
+    }
+
+    // Update search UI
+    function updateSearchUI() {
+        const hasMatches = searchState.matches.length > 0;
+        
+        searchResultsInfo.classList.toggle('visible', hasMatches);
+        searchPrev.disabled = !hasMatches;
+        searchNext.disabled = !hasMatches;
+        
+        if (hasMatches) {
+            if (searchState.isIndexPage) {
+                const totalMatches = searchState.totalMatchCount || searchState.matches.length;
+                const conversationCount = searchState.matches.length;
+                if (totalMatches > conversationCount) {
+                    searchResultCount.textContent = `${totalMatches} matches in ${conversationCount} conversations`;
+                } else {
+                    searchResultCount.textContent = `${conversationCount} matches`;
+                }
+            } else {
+                searchResultCount.textContent = `${searchState.currentMatchIndex + 1} of ${searchState.matches.length} matches`;
+            }
+        } else if (searchState.query) {
+            searchResultCount.textContent = 'No matches';
+        } else {
+            searchResultCount.textContent = 'No results';
+        }
+    }
+
+    // Clear search
+    function clearSearch() {
+        searchInput.value = '';
+        searchState.query = '';
+        searchState.matches = [];
+        searchState.currentMatchIndex = 0;
+        updateSearchInputState();
+        clearHighlights();
+        updateSearchUI();
+
+        if (searchState.isIndexPage && searchResultsPanel) {
+            searchResultsPanel.classList.remove('visible');
+        }
+
+        saveSearchState();
+    }
+
+
+    // Handle keyboard shortcuts
+    function handleKeyboardShortcuts(e) {
+        // Ctrl+F or Cmd+F
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            e.preventDefault();
+
+            // On transcript pages, open filter toolbar if not visible
+            const filterToolbar = document.querySelector('.filter-toolbar');
+            if (filterToolbar && !filterToolbar.classList.contains('visible')) {
+                // Trigger filter button click to show toolbar
+                const filterButton = document.getElementById('filterMessages');
+                if (filterButton) filterButton.click();
+            }
+
+            // Focus and select search input
+            if (searchInput) {
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+
+        // F3 - Next match
+        if (e.key === 'F3') {
+            e.preventDefault();
+            if (e.shiftKey) {
+                navigateMatch(-1);
+            } else {
+                navigateMatch(1);
+            }
+        }
+
+        // Escape - Close search results panel on index page
+        if (e.key === 'Escape') {
+            if (searchState.isIndexPage && searchResultsPanel && searchResultsPanel.classList.contains('visible')) {
+                searchResultsPanel.classList.remove('visible');
+            }
+        }
+        
+        // Enter - Next match when search input is focused
+        if (e.key === 'Enter' && document.activeElement === searchInput) {
+            e.preventDefault();
+            if (e.shiftKey) {
+                navigateMatch(-1);
+            } else {
+                navigateMatch(1);
+            }
+        }
+    }
+
+    // Save search state to localStorage
+    function saveSearchState() {
+        const state = {
+            query: searchState.query,
+            useRegex: searchState.useRegex,
+            searchInFiltered: searchState.searchInFiltered
+        };
+        localStorage.setItem('claudeLogSearchState', JSON.stringify(state));
+    }
+
+    // Restore search state from localStorage
+    function restoreSearchState() {
+        const saved = localStorage.getItem('claudeLogSearchState');
+        if (saved) {
+            try {
+                const state = JSON.parse(saved);
+                searchState.useRegex = state.useRegex || false;
+                searchState.searchInFiltered = state.searchInFiltered !== false;
+
+                // Update UI
+                searchRegex.checked = searchState.useRegex;
+                searchInFiltered.checked = searchState.searchInFiltered;
+            } catch (e) {
+                console.error('Failed to restore search state:', e);
+            }
+        }
+    }
+
+    // Re-index when filters change (for transcript pages)
+    if (!searchState.isIndexPage) {
+        // Listen for filter changes
+        let isUpdatingFilters = false;
+        const observer = new MutationObserver((mutations) => {
+            // Only react to filtered-hidden class changes, not search highlights
+            const hasFilterChange = mutations.some(mutation => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    const target = mutation.target;
+                    // Check if this is a message element getting filtered
+                    return target.classList && target.classList.contains('message');
+                }
+                return false;
+            });
+
+            if (hasFilterChange && !isUpdatingFilters && searchState.query && searchState.searchInFiltered) {
+                isUpdatingFilters = true;
+                setTimeout(() => {
+                    buildSearchIndex();
+                    performSearch(searchState.query);
+                    isUpdatingFilters = false;
+                }, 100);
+            }
+        });
+
+        // Observe changes to filtered-hidden class
+        observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['class'],
+            subtree: true
+        });
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSearch);
+    } else {
+        initSearch();
+    }
+})();
+</script>

@@ -1,0 +1,168 @@
+/* Filter toolbar and controls */
+.filter-toolbar {
+    background-color: var(--neutral-dimmed);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    box-shadow: -7px -7px 10px #eeeeee44, 7px 7px 10px #00000011;
+    border-left: var(--white-dimmed) 1px solid;
+    border-top: var(--white-dimmed) 1px solid;
+    border-bottom: #00000017 1px solid;
+    border-right: #00000017 1px solid;
+    display: none;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+}
+
+.filter-toolbar.visible {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.toolbar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #dee2e633;
+    gap: 16px;
+}
+
+.toolbar-header h3 {
+    margin: 0;
+    font-size: 1em;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.close-toolbar-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 20px;
+    padding: 5px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    line-height: 1;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.close-toolbar-btn:hover {
+    background-color: var(--white-dimmed);
+    color: var(--text-primary);
+}
+
+.filter-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #dee2e633;
+}
+
+
+.filter-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+
+.filter-toggle {
+    padding: 6px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 20px;
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.filter-toggle:hover {
+    background-color: #ffffff99;
+    transform: translateY(-1px);
+}
+
+.filter-toggle.active {
+    background-color: #ffffffaa;
+}
+
+.filter-toggle.active:hover {
+    background-color: var(--white-dimmed);
+}
+
+/* Color-coded filter buttons */
+.filter-toggle[data-type="user"] {
+    border-color: var(--user-color);
+    border-width: 2px;
+}
+
+.filter-toggle[data-type="system"] {
+    border-color: var(--system-color);
+    border-width: 2px;
+}
+
+.filter-toggle[data-type="tool"] {
+    border-color: var(--tool-use-color);
+    border-width: 2px;
+}
+
+.filter-toggle[data-type="assistant"] {
+    border-color: var(--assistant-color);
+    border-width: 2px;
+}
+
+.filter-toggle[data-type="thinking"] {
+    border-color: var(--assistant-dimmed);
+    border-width: 2px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.filter-action-btn {
+    padding: 4px 8px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background-color: var(--white-dimmed);
+    color: #6c757d;
+    font-size: 0.75em;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.filter-action-btn:hover {
+    background-color: #ffffff99;
+}
+
+.filter-toggle .count {
+    opacity: 0.7;
+    font-size: 0.9em;
+    margin-left: 2px;
+}
+
+.filter-toggle.active .count {
+    opacity: 1;
+}
+
+.filter-messages.active {
+    background-color: #fff3cd;
+}

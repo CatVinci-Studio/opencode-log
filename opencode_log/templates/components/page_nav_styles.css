@@ -1,0 +1,79 @@
+/* Page navigation styles for paginated combined transcripts */
+
+.page-navigation {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #ffffff66;
+    border-radius: 8px;
+    box-shadow: -7px -7px 10px #eeeeee44, 7px 7px 10px #00000011;
+    border-left: #ffffff66 1px solid;
+    border-top: #ffffff66 1px solid;
+    border-bottom: #00000017 1px solid;
+    border-right: #00000017 1px solid;
+}
+
+.page-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-title {
+    font-size: 1.3em;
+    font-weight: 600;
+    color: var(--system-warning-color);
+}
+
+.page-stats {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+
+.page-stats .stat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.page-nav-links {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-light);
+}
+
+.page-nav-link {
+    text-decoration: none;
+    color: var(--system-warning-color);
+    font-weight: 500;
+    padding: 6px 16px;
+    border-radius: 4px;
+    background-color: var(--bg-hover);
+    transition: all 0.2s ease;
+}
+
+.page-nav-link:hover {
+    background-color: var(--session-bg-dimmed);
+    transform: translateY(-1px);
+}
+
+.page-nav-link.prev::before {
+    content: '';
+}
+
+.page-nav-link.next::after {
+    content: '';
+}
+
+/* Hide next link on last page (will be revealed via in-place editing when new page is created) */
+.page-nav-link.next.last-page {
+    display: none;
+}
