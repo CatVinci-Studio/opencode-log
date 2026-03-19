@@ -207,6 +207,24 @@ opencode-log --no-warnings
 
 ### Release to PyPI
 
+Recommended (GitHub Actions + Trusted Publishing):
+
+1. In PyPI project settings, add a Trusted Publisher for this repo:
+   - Owner: `CatVinci-Studio`
+   - Repository: `opencode-log`
+   - Workflow: `.github/workflows/release.yml`
+   - Environment: `pypi`
+2. Publish to PyPI by either:
+   - manually running workflow **Release Python Package**, or
+   - creating and pushing a version tag (for example `v0.3.1`).
+
+```bash
+git tag v0.3.1
+git push origin v0.3.1
+```
+
+Optional local publish (token-based):
+
 ```bash
 # 1) Build
 uv build
@@ -214,10 +232,7 @@ uv build
 # 2) Validate package metadata
 uvx twine check dist/*
 
-# 3) Upload to TestPyPI (recommended)
-uvx twine upload --repository testpypi dist/*
-
-# 4) Upload to PyPI
+# 3) Upload to PyPI
 uvx twine upload dist/*
 ```
 
@@ -439,6 +454,24 @@ opencode-log --no-warnings
 
 ### 发布到 PyPI
 
+推荐使用 GitHub Actions + Trusted Publishing（无需在仓库保存 PyPI Token）：
+
+1. 在 PyPI 项目设置中添加 Trusted Publisher：
+   - Owner: `CatVinci-Studio`
+   - Repository: `opencode-log`
+   - Workflow: `.github/workflows/release.yml`
+   - Environment: `pypi`
+2. 发布到 PyPI 的方式：
+   - 手动触发 **Release Python Package** 工作流；或
+   - 创建并推送版本标签（如 `v0.3.1`）
+
+```bash
+git tag v0.3.1
+git push origin v0.3.1
+```
+
+本地发布（Token 方式，可选）：
+
 ```bash
 # 1) 构建
 uv build
@@ -446,10 +479,7 @@ uv build
 # 2) 包体校验
 uvx twine check dist/*
 
-# 3) 先发 TestPyPI（推荐）
-uvx twine upload --repository testpypi dist/*
-
-# 4) 再发正式 PyPI
+# 3) 发布到 PyPI
 uvx twine upload dist/*
 ```
 
