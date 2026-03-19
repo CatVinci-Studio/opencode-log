@@ -2,6 +2,8 @@
 
 `opencode-log` is a CLI tool that converts local OpenCode sessions into interactive, searchable HTML/Markdown logs.
 
+It now reads data directly from OpenCode's SQLite database (`opencode.db`) by default.
+
 [![PyPI version](https://img.shields.io/pypi/v/opencode-log.svg)](https://pypi.org/project/opencode-log/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/CatVinci-Studio/opencode-log/actions/workflows/release.yml/badge.svg)](https://github.com/CatVinci-Studio/opencode-log/actions/workflows/release.yml)
@@ -35,6 +37,12 @@ pip install opencode-log
 ```bash
 # Process all projects (default: opens browser)
 opencode-log
+
+# Explicitly point to OpenCode data directory (contains opencode.db)
+opencode-log --storage-dir ~/.local/share/opencode
+
+# Or point directly to the database file
+opencode-log --storage-dir ~/.local/share/opencode/opencode.db
 
 # Process all projects without opening browser
 opencode-log --no-open-browser

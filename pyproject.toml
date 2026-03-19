@@ -1,7 +1,7 @@
 [project]
 name = "opencode-log"
-version = "0.3.0"
-description = "Generate browsable HTML logs from OpenCode local storage"
+version = "0.3.1"
+description = "Generate browsable HTML logs from OpenCode local data"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"

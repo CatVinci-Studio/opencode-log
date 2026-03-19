@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 from opencode_log.storage import (
@@ -10,40 +11,101 @@ from opencode_log.storage import (
 )
 
 
-def _write_json(path: Path, payload: object) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload), encoding="utf-8")
-
-
 def _build_minimal_storage(root: Path) -> Path:
-    storage = root / "storage"
+    storage = root / "opencode"
+    storage.mkdir(parents=True, exist_ok=True)
+    db_path = storage / "opencode.db"
+
     project_id = "proj_1"
     session_id = "ses_1"
     message_id = "msg_1"
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.executescript(
+            """
+            CREATE TABLE project (
+                id TEXT PRIMARY KEY,
+                worktree TEXT,
+                vcs TEXT,
+                time_created INTEGER,
+                time_updated INTEGER
+            );
+            CREATE TABLE session (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                parent_id TEXT,
+                slug TEXT NOT NULL,
+                directory TEXT NOT NULL,
+                title TEXT NOT NULL,
+                version TEXT NOT NULL,
+                share_url TEXT,
+                summary_additions INTEGER,
+                summary_deletions INTEGER,
+                summary_files INTEGER,
+                summary_diffs TEXT,
+                revert TEXT,
+                permission TEXT,
+                time_created INTEGER NOT NULL,
+                time_updated INTEGER NOT NULL,
+                time_compacting INTEGER,
+                time_archived INTEGER,
+                workspace_id TEXT
+            );
+            CREATE TABLE message (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                time_created INTEGER NOT NULL,
+                time_updated INTEGER NOT NULL,
+                data TEXT NOT NULL
+            );
+            CREATE TABLE part (
+                id TEXT PRIMARY KEY,
+                message_id TEXT NOT NULL,
+                session_id TEXT NOT NULL,
+                time_created INTEGER NOT NULL,
+                time_updated INTEGER NOT NULL,
+                data TEXT NOT NULL
+            );
+            CREATE TABLE todo (
+                session_id TEXT NOT NULL,
+                content TEXT NOT NULL,
+                status TEXT NOT NULL,
+                priority TEXT NOT NULL,
+                position INTEGER NOT NULL,
+                time_created INTEGER NOT NULL,
+                time_updated INTEGER NOT NULL,
+                PRIMARY KEY (session_id, position)
+            );
+            """
+        )
 
-    _write_json(
-        storage / "project" / f"{project_id}.json",
-        {
-            "id": project_id,
-            "worktree": "/tmp/work",
-            "time": {"created": 1000, "updated": 2000},
-        },
-    )
-    _write_json(
-        storage / "session" / project_id / f"{session_id}.json",
-        {
-            "id": session_id,
-            "projectID": project_id,
-            "title": "Test Session",
-            "directory": "/tmp/work",
-            "version": "1",
-            "time": {"created": 1100, "updated": 2200},
-            "summary": {"additions": 1, "deletions": 1, "files": 1},
-        },
-    )
-    _write_json(
-        storage / "message" / session_id / f"{message_id}.json",
-        {
+        conn.execute(
+            "INSERT INTO project (id, worktree, vcs, time_created, time_updated) VALUES (?, ?, ?, ?, ?)",
+            (project_id, "/tmp/work", "git", 1000, 2000),
+        )
+        conn.execute(
+            """
+            INSERT INTO session (
+                id, project_id, slug, directory, title, version,
+                summary_additions, summary_deletions, summary_files,
+                time_created, time_updated
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                session_id,
+                project_id,
+                "test-session",
+                "/tmp/work",
+                "Test Session",
+                "1",
+                1,
+                1,
+                1,
+                1100,
+                2200,
+            ),
+        )
+        message_payload = {
             "id": message_id,
             "sessionID": session_id,
             "role": "assistant",
@@ -56,34 +118,51 @@ def _build_minimal_storage(root: Path) -> Path:
             },
             "cost": 0.123,
             "finish": "stop",
-        },
-    )
-    _write_json(
-        storage / "part" / message_id / "prt_1.json",
-        {
-            "id": "prt_1",
-            "type": "text",
-            "text": "hello",
-            "time": {"start": 1200, "end": 1201},
-        },
-    )
-    _write_json(
-        storage / "part" / message_id / "prt_2.json",
-        {
-            "id": "prt_2",
-            "type": "new-future-type",
-            "value": "x",
-            "time": {"start": 1202, "end": 1203},
-        },
-    )
-    _write_json(
-        storage / "todo" / f"{session_id}.json",
-        [{"id": "1", "content": "item", "status": "completed", "priority": "high"}],
-    )
-    _write_json(
-        storage / "session_diff" / f"{session_id}.json",
-        [{"file": "a.py", "status": "modified", "additions": 10, "deletions": 2}],
-    )
+            "summary": {
+                "diffs": [
+                    {
+                        "file": "a.py",
+                        "status": "modified",
+                        "additions": 10,
+                        "deletions": 2,
+                    }
+                ]
+            },
+        }
+        conn.execute(
+            "INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?)",
+            (message_id, session_id, 1200, 1250, json.dumps(message_payload)),
+        )
+        conn.execute(
+            "INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "prt_1",
+                message_id,
+                session_id,
+                1200,
+                1201,
+                json.dumps({"id": "prt_1", "type": "text", "text": "hello"}),
+            ),
+        )
+        conn.execute(
+            "INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "prt_2",
+                message_id,
+                session_id,
+                1202,
+                1203,
+                json.dumps({"id": "prt_2", "type": "new-future-type", "value": "x"}),
+            ),
+        )
+        conn.execute(
+            "INSERT INTO todo (session_id, content, status, priority, position, time_created, time_updated) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (session_id, "item", "completed", "high", 0, 1230, 1230),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
     return storage
 
 
@@ -109,4 +188,4 @@ def test_schema_warning_when_missing_directories(tmp_path: Path) -> None:
     storage = tmp_path / "storage"
     storage.mkdir(parents=True)
     warnings = get_storage_schema_warnings(storage)
-    assert any("missing storage directory" in msg for msg in warnings)
+    assert any("opencode.db not found" in msg for msg in warnings)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 from click.testing import CliRunner
@@ -8,55 +9,120 @@ from click.testing import CliRunner
 from opencode_log.cli import main
 
 
-def _write_json(path: Path, payload: object) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload), encoding="utf-8")
-
-
 def _storage(root: Path) -> Path:
-    storage = root / "storage"
+    storage = root / "opencode"
+    storage.mkdir(parents=True, exist_ok=True)
+    db_path = storage / "opencode.db"
+
     project_id = "proj_1"
     session_id = "ses_1"
     message_id = "msg_1"
 
-    _write_json(
-        storage / "project" / f"{project_id}.json",
-        {
-            "id": project_id,
-            "worktree": "/tmp/work",
-            "time": {"created": 1, "updated": 2},
-        },
-    )
-    _write_json(
-        storage / "session" / project_id / f"{session_id}.json",
-        {
-            "id": session_id,
-            "projectID": project_id,
-            "title": "s",
-            "directory": "/tmp/work",
-            "version": "1",
-            "time": {"created": 10, "updated": 20},
-            "summary": {"additions": 0, "deletions": 0, "files": 0},
-        },
-    )
-    _write_json(
-        storage / "message" / session_id / f"{message_id}.json",
-        {
-            "id": message_id,
-            "sessionID": session_id,
-            "role": "user",
-            "time": {"created": 12, "completed": 13},
-        },
-    )
-    _write_json(
-        storage / "part" / message_id / "prt_1.json",
-        {
-            "id": "prt_1",
-            "type": "text",
-            "text": "hello",
-            "time": {"start": 12, "end": 13},
-        },
-    )
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.executescript(
+            """
+            CREATE TABLE project (
+                id TEXT PRIMARY KEY,
+                worktree TEXT,
+                vcs TEXT,
+                time_created INTEGER,
+                time_updated INTEGER
+            );
+            CREATE TABLE session (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                parent_id TEXT,
+                slug TEXT NOT NULL,
+                directory TEXT NOT NULL,
+                title TEXT NOT NULL,
+                version TEXT NOT NULL,
+                share_url TEXT,
+                summary_additions INTEGER,
+                summary_deletions INTEGER,
+                summary_files INTEGER,
+                summary_diffs TEXT,
+                revert TEXT,
+                permission TEXT,
+                time_created INTEGER NOT NULL,
+                time_updated INTEGER NOT NULL,
+                time_compacting INTEGER,
+                time_archived INTEGER,
+                workspace_id TEXT
+            );
+            CREATE TABLE message (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                time_created INTEGER NOT NULL,
+                time_updated INTEGER NOT NULL,
+                data TEXT NOT NULL
+            );
+            CREATE TABLE part (
+                id TEXT PRIMARY KEY,
+                message_id TEXT NOT NULL,
+                session_id TEXT NOT NULL,
+                time_created INTEGER NOT NULL,
+                time_updated INTEGER NOT NULL,
+                data TEXT NOT NULL
+            );
+            CREATE TABLE todo (
+                session_id TEXT NOT NULL,
+                content TEXT NOT NULL,
+                status TEXT NOT NULL,
+                priority TEXT NOT NULL,
+                position INTEGER NOT NULL,
+                time_created INTEGER NOT NULL,
+                time_updated INTEGER NOT NULL,
+                PRIMARY KEY (session_id, position)
+            );
+            """
+        )
+        conn.execute(
+            "INSERT INTO project (id, worktree, vcs, time_created, time_updated) VALUES (?, ?, ?, ?, ?)",
+            (project_id, "/tmp/work", "git", 1, 2),
+        )
+        conn.execute(
+            """
+            INSERT INTO session (
+                id, project_id, slug, directory, title, version,
+                summary_additions, summary_deletions, summary_files,
+                time_created, time_updated
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (session_id, project_id, "s", "/tmp/work", "s", "1", 0, 0, 0, 10, 20),
+        )
+        conn.execute(
+            "INSERT INTO message (id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?)",
+            (
+                message_id,
+                session_id,
+                12,
+                13,
+                json.dumps(
+                    {
+                        "id": message_id,
+                        "sessionID": session_id,
+                        "role": "user",
+                        "time": {"created": 12, "completed": 13},
+                    }
+                ),
+            ),
+        )
+        conn.execute(
+            "INSERT INTO part (id, message_id, session_id, time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "prt_1",
+                message_id,
+                session_id,
+                12,
+                13,
+                json.dumps({"id": "prt_1", "type": "text", "text": "hello"}),
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
     return storage
 
 

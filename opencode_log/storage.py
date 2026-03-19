@@ -2,26 +2,49 @@ from __future__ import annotations
 
 import json
 import re
+import sqlite3
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
 import dateparser
 
 from .models import Message, Project, Session, SessionDiffItem, SessionInfo, TodoItem
-from .normalizer import inspect_storage_schema, normalize_message
+from .normalizer import normalize_message
 
 if TYPE_CHECKING:
     from .cache import CacheManager
 
 
-def _read_json_file(path: Path) -> Any | None:
-    if not path.exists():
+def _parse_json_text(value: Any) -> Any | None:
+    if not isinstance(value, str):
         return None
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        return json.loads(value)
     except Exception:
         return None
+
+
+def _resolve_db_path(storage_dir: Path) -> Path | None:
+    if storage_dir.is_file() and storage_dir.name.endswith(".db"):
+        return storage_dir
+
+    candidates = [storage_dir / "opencode.db"]
+    if storage_dir.name == "storage":
+        candidates.append(storage_dir.parent / "opencode.db")
+
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_file():
+            return candidate
+    return None
+
+
+def _connect_db(storage_dir: Path) -> sqlite3.Connection | None:
+    db_path = _resolve_db_path(storage_dir)
+    if db_path is None:
+        return None
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def parse_date_to_ms(text: str | None, end_of_day: bool = False) -> int | None:
@@ -41,137 +64,225 @@ def parse_date_to_ms(text: str | None, end_of_day: bool = False) -> int | None:
 
 
 def load_projects(storage_dir: Path) -> list[Project]:
-    project_dir = storage_dir / "project"
     projects: list[Project] = []
-    if not project_dir.exists():
+    conn = _connect_db(storage_dir)
+    if conn is None:
         return projects
 
-    for file in sorted(project_dir.glob("*.json")):
-        data = _read_json_file(file)
-        if not isinstance(data, dict):
-            continue
-        time_data = data.get("time") or {}
-        projects.append(
-            Project(
-                id=str(data.get("id", "")),
-                worktree=str(data.get("worktree", "")),
-                vcs=data.get("vcs"),
-                created_ms=time_data.get("created"),
-                updated_ms=time_data.get("updated"),
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, worktree, vcs, time_created, time_updated
+            FROM project
+            ORDER BY time_updated DESC, id ASC
+            """
+        ).fetchall()
+        for row in rows:
+            projects.append(
+                Project(
+                    id=str(row["id"] or ""),
+                    worktree=str(row["worktree"] or ""),
+                    vcs=row["vcs"],
+                    created_ms=row["time_created"],
+                    updated_ms=row["time_updated"],
+                )
             )
-        )
+    except sqlite3.Error:
+        return []
+    finally:
+        conn.close()
     return projects
 
 
-def _load_project_sessions(storage_dir: Path, project_id: str) -> list[SessionInfo]:
-    session_root = storage_dir / "session" / project_id
+def _load_project_sessions(
+    conn: sqlite3.Connection, project_id: str
+) -> list[SessionInfo]:
     infos: list[SessionInfo] = []
-    if not session_root.exists():
-        return infos
+    rows = conn.execute(
+        """
+        SELECT
+            id,
+            project_id,
+            directory,
+            title,
+            slug,
+            version,
+            summary_additions,
+            summary_deletions,
+            summary_files,
+            time_created,
+            time_updated
+        FROM session
+        WHERE project_id = ?
+        ORDER BY time_updated DESC, id ASC
+        """,
+        (project_id,),
+    ).fetchall()
 
-    for file in sorted(session_root.glob("ses_*.json")):
-        data = _read_json_file(file)
-        if not isinstance(data, dict):
-            continue
-        t = data.get("time") or {}
-        s = data.get("summary") or {}
+    for row in rows:
         infos.append(
             SessionInfo(
-                id=str(data.get("id", "")),
-                project_id=str(data.get("projectID", project_id)),
-                directory=str(data.get("directory", "")),
-                title=str(data.get("title", "Untitled Session")),
-                slug=data.get("slug"),
-                version=data.get("version"),
-                created_ms=t.get("created"),
-                updated_ms=t.get("updated"),
-                additions=int(s.get("additions", 0) or 0),
-                deletions=int(s.get("deletions", 0) or 0),
-                files=int(s.get("files", 0) or 0),
+                id=str(row["id"] or ""),
+                project_id=str(row["project_id"] or project_id),
+                directory=str(row["directory"] or ""),
+                title=str(row["title"] or "Untitled Session"),
+                slug=row["slug"],
+                version=row["version"],
+                created_ms=row["time_created"],
+                updated_ms=row["time_updated"],
+                additions=int(row["summary_additions"] or 0),
+                deletions=int(row["summary_deletions"] or 0),
+                files=int(row["summary_files"] or 0),
             )
         )
     return infos
 
 
-def _part_sort_key(part: dict[str, Any]) -> tuple[int, int, str]:
-    time_data = part.get("time") or {}
-    start = int(time_data.get("start", 0) or 0)
-    end = int(time_data.get("end", 0) or 0)
-    return (start, end, str(part.get("id", "")))
+def _load_parts_by_message(
+    conn: sqlite3.Connection, session_id: str
+) -> dict[str, list[dict[str, Any]]]:
+    rows = conn.execute(
+        """
+        SELECT id, message_id, time_created, time_updated, data
+        FROM part
+        WHERE session_id = ?
+        ORDER BY time_created ASC, time_updated ASC, id ASC
+        """,
+        (session_id,),
+    ).fetchall()
 
-
-def _load_parts_for_message(storage_dir: Path, message_id: str) -> list[dict[str, Any]]:
-    part_dir = storage_dir / "part" / message_id
-    if not part_dir.exists():
-        return []
-
-    items: list[dict[str, Any]] = []
-    for file in sorted(part_dir.glob("prt_*.json")):
-        part = _read_json_file(file)
-        if isinstance(part, dict):
-            items.append(part)
-    items.sort(key=_part_sort_key)
-    return items
-
-
-def _load_messages(storage_dir: Path, session_id: str) -> list[Message]:
-    message_dir = storage_dir / "message" / session_id
-    if not message_dir.exists():
-        return []
-
-    messages: list[Message] = []
-    for file in sorted(message_dir.glob("msg_*.json")):
-        data = _read_json_file(file)
-        if not isinstance(data, dict):
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        raw = _parse_json_text(row["data"])
+        if not isinstance(raw, dict):
             continue
-        m = normalize_message(
-            raw=data,
-            session_id=session_id,
-            parts=_load_parts_for_message(storage_dir, str(data.get("id", ""))),
-        )
-        messages.append(m)
+        payload = dict(raw)
+        payload.setdefault("id", row["id"])
+        time_data = payload.get("time")
+        if not isinstance(time_data, dict):
+            time_data = {}
+        time_data.setdefault("start", row["time_created"])
+        time_data.setdefault("end", row["time_updated"])
+        payload["time"] = time_data
+        message_id = str(row["message_id"] or "")
+        grouped.setdefault(message_id, []).append(payload)
+    return grouped
 
-    messages.sort(key=lambda x: ((x.created_ms or 0), x.id))
-    return messages
 
-
-def _load_todos(storage_dir: Path, session_id: str) -> list[TodoItem]:
-    todo_path = storage_dir / "todo" / f"{session_id}.json"
-    data = _read_json_file(todo_path)
-    if not isinstance(data, list):
+def _parse_session_diffs(raw_diffs: Any) -> list[SessionDiffItem]:
+    if not isinstance(raw_diffs, list):
         return []
 
-    items: list[TodoItem] = []
-    for row in data:
+    parsed: list[SessionDiffItem] = []
+    for row in raw_diffs:
         if not isinstance(row, dict):
             continue
-        items.append(
-            TodoItem(
-                id=str(row.get("id", "")),
-                content=str(row.get("content", "")),
-                status=str(row.get("status", "pending")),
-                priority=str(row.get("priority", "medium")),
-            )
-        )
-    return items
-
-
-def _load_session_diffs(storage_dir: Path, session_id: str) -> list[SessionDiffItem]:
-    diff_path = storage_dir / "session_diff" / f"{session_id}.json"
-    data = _read_json_file(diff_path)
-    if not isinstance(data, list):
-        return []
-
-    items: list[SessionDiffItem] = []
-    for row in data:
-        if not isinstance(row, dict):
-            continue
-        items.append(
+        parsed.append(
             SessionDiffItem(
                 file=str(row.get("file", "")),
                 status=str(row.get("status", "modified")),
                 additions=int(row.get("additions", 0) or 0),
                 deletions=int(row.get("deletions", 0) or 0),
+            )
+        )
+    return parsed
+
+
+def _fallback_session_diffs_from_patch_parts(
+    messages: list[Message],
+) -> list[SessionDiffItem]:
+    files: list[str] = []
+    seen: set[str] = set()
+    for message in messages:
+        for part in message.parts:
+            if part.get("type") != "patch":
+                continue
+            part_files = part.get("files")
+            if not isinstance(part_files, list):
+                continue
+            for path in part_files:
+                text = str(path)
+                if not text or text in seen:
+                    continue
+                seen.add(text)
+                files.append(text)
+    return [
+        SessionDiffItem(file=path, status="modified", additions=0, deletions=0)
+        for path in files
+    ]
+
+
+def _load_messages_and_diffs(
+    conn: sqlite3.Connection,
+    session_id: str,
+    parts_by_message: dict[str, list[dict[str, Any]]],
+) -> tuple[list[Message], list[SessionDiffItem]]:
+    messages: list[Message] = []
+    latest_diffs: list[SessionDiffItem] = []
+
+    rows = conn.execute(
+        """
+        SELECT id, session_id, time_created, time_updated, data
+        FROM message
+        WHERE session_id = ?
+        ORDER BY time_created ASC, id ASC
+        """,
+        (session_id,),
+    ).fetchall()
+
+    for row in rows:
+        data = _parse_json_text(row["data"])
+        if not isinstance(data, dict):
+            continue
+        data = dict(data)
+        data.setdefault("id", row["id"])
+        data.setdefault("sessionID", row["session_id"])
+        time_data = data.get("time")
+        if not isinstance(time_data, dict):
+            time_data = {}
+        time_data.setdefault("created", row["time_created"])
+        time_data.setdefault("completed", row["time_updated"])
+        data["time"] = time_data
+
+        summary = data.get("summary")
+        if isinstance(summary, dict):
+            parsed = _parse_session_diffs(summary.get("diffs"))
+            if parsed:
+                latest_diffs = parsed
+
+        m = normalize_message(
+            raw=data,
+            session_id=session_id,
+            parts=parts_by_message.get(str(row["id"] or ""), []),
+        )
+        messages.append(m)
+
+    messages.sort(key=lambda x: ((x.created_ms or 0), x.id))
+    if not latest_diffs:
+        latest_diffs = _fallback_session_diffs_from_patch_parts(messages)
+    return messages, latest_diffs
+
+
+def _load_todos(conn: sqlite3.Connection, session_id: str) -> list[TodoItem]:
+    rows = conn.execute(
+        """
+        SELECT session_id, content, status, priority, position
+        FROM todo
+        WHERE session_id = ?
+        ORDER BY position ASC
+        """,
+        (session_id,),
+    ).fetchall()
+
+    items: list[TodoItem] = []
+    for row in rows:
+        item_id = f"{row['session_id']}:{int(row['position'] or 0)}"
+        items.append(
+            TodoItem(
+                id=item_id,
+                content=str(row["content"] or ""),
+                status=str(row["status"] or "pending"),
+                priority=str(row["priority"] or "medium"),
             )
         )
     return items
@@ -213,45 +324,56 @@ def load_project_sessions(
     include_todos: bool = True,
     include_diffs: bool = True,
 ) -> list[Session]:
+    conn = _connect_db(storage_dir)
+    if conn is None:
+        return []
+
     result: list[Session] = []
-    infos = _load_project_sessions(storage_dir, project_id)
+    infos = _load_project_sessions(conn, project_id)
     infos.sort(key=lambda x: ((x.updated_ms or x.created_ms or 0), x.id), reverse=True)
 
-    for info in infos:
-        if not _session_in_range(info, from_ms, to_ms):
-            continue
-        cached = (
-            cache_manager.get_session(info.id, info.updated_ms)
-            if cache_manager
-            else None
-        )
-        if cached is not None:
-            session_loaded = cached
-        else:
-            session_loaded = Session(
-                info=info,
-                messages=_load_messages(storage_dir, info.id),
-                todos=_load_todos(storage_dir, info.id),
-                diffs=_load_session_diffs(storage_dir, info.id),
+    try:
+        for info in infos:
+            if not _session_in_range(info, from_ms, to_ms):
+                continue
+            cached = (
+                cache_manager.get_session(info.id, info.updated_ms)
+                if cache_manager
+                else None
             )
-            if cache_manager:
-                cache_manager.set_session(session_loaded)
+            if cached is not None:
+                session_loaded = cached
+            else:
+                parts_by_message = _load_parts_by_message(conn, info.id)
+                messages, diffs = _load_messages_and_diffs(
+                    conn, info.id, parts_by_message
+                )
+                session_loaded = Session(
+                    info=info,
+                    messages=messages,
+                    todos=_load_todos(conn, info.id),
+                    diffs=diffs,
+                )
+                if cache_manager:
+                    cache_manager.set_session(session_loaded)
 
-        messages = session_loaded.messages
-        if from_ms is not None or to_ms is not None:
-            messages = [m for m in messages if _message_in_range(m, from_ms, to_ms)]
-        if not messages:
-            continue
-        result.append(
-            Session(
-                info=info,
-                messages=messages,
-                todos=session_loaded.todos if include_todos else [],
-                diffs=session_loaded.diffs if include_diffs else [],
+            messages = session_loaded.messages
+            if from_ms is not None or to_ms is not None:
+                messages = [m for m in messages if _message_in_range(m, from_ms, to_ms)]
+            if not messages:
+                continue
+            result.append(
+                Session(
+                    info=info,
+                    messages=messages,
+                    todos=session_loaded.todos if include_todos else [],
+                    diffs=session_loaded.diffs if include_diffs else [],
+                )
             )
-        )
-        if max_sessions is not None and len(result) >= max_sessions:
-            break
+            if max_sessions is not None and len(result) >= max_sessions:
+                break
+    finally:
+        conn.close()
 
     result.sort(
         key=lambda s: (s.info.updated_ms or s.info.created_ms or 0, s.info.id),
@@ -268,4 +390,39 @@ def safe_slug(text: str) -> str:
 
 
 def get_storage_schema_warnings(storage_dir: Path) -> list[str]:
-    return inspect_storage_schema(storage_dir)
+    db_path = _resolve_db_path(storage_dir)
+    if db_path is None:
+        return ["opencode.db not found (expected in data directory)"]
+
+    warnings: list[str] = []
+    conn: sqlite3.Connection | None = None
+    try:
+        conn = sqlite3.connect(db_path)
+        rows = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+        available = {str(row[0]) for row in rows}
+        required = {"project", "session", "message", "part", "todo"}
+        missing = sorted(required - available)
+        for table in missing:
+            warnings.append(f"missing database table: {table}")
+
+        if "session" in available:
+            versions = {
+                str(row[0])
+                for row in conn.execute(
+                    "SELECT DISTINCT version FROM session WHERE version IS NOT NULL AND version != '' LIMIT 20"
+                ).fetchall()
+            }
+            if len(versions) > 1:
+                warnings.append(
+                    "multiple session schema versions detected: "
+                    + ", ".join(sorted(versions))
+                )
+    except sqlite3.Error as exc:
+        warnings.append(f"database error: {exc}")
+    finally:
+        if conn is not None:
+            conn.close()
+
+    return warnings

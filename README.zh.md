@@ -2,6 +2,8 @@
 
 `opencode-log` 是一个 CLI 工具，用于将本地 OpenCode 会话转换为可交互、可搜索的 HTML/Markdown 日志。
 
+现在默认直接读取 OpenCode 的 SQLite 数据库（`opencode.db`）。
+
 [![PyPI version](https://img.shields.io/pypi/v/opencode-log.svg)](https://pypi.org/project/opencode-log/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/CatVinci-Studio/opencode-log/actions/workflows/release.yml/badge.svg)](https://github.com/CatVinci-Studio/opencode-log/actions/workflows/release.yml)
@@ -35,6 +37,12 @@ pip install opencode-log
 ```bash
 # 处理全部项目（默认会打开浏览器）
 opencode-log
+
+# 显式指定 OpenCode 数据目录（包含 opencode.db）
+opencode-log --storage-dir ~/.local/share/opencode
+
+# 或直接指定数据库文件
+opencode-log --storage-dir ~/.local/share/opencode/opencode.db
 
 # 处理全部项目但不打开浏览器
 opencode-log --no-open-browser

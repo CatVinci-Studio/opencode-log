@@ -34,7 +34,7 @@ from .storage import (
 
 
 def _default_storage_dir() -> Path:
-    return Path.home() / ".local" / "share" / "opencode" / "storage"
+    return Path.home() / ".local" / "share" / "opencode"
 
 
 def _pick_projects(
@@ -79,7 +79,7 @@ def _clear_output_files(output_dir: Path, file_ext: str) -> None:
     "--storage-dir",
     type=click.Path(path_type=Path),
     default=None,
-    help="OpenCode storage directory (default: ~/.local/share/opencode/storage)",
+    help="OpenCode data directory or opencode.db path (default: ~/.local/share/opencode)",
 )
 @click.option(
     "-o",
@@ -101,7 +101,7 @@ def _clear_output_files(output_dir: Path, file_ext: str) -> None:
 @click.option(
     "--all-projects",
     is_flag=True,
-    help="Process all projects in storage directory",
+    help="Process all projects in OpenCode data source",
 )
 @click.option(
     "--from-date",
@@ -261,22 +261,15 @@ def main(
             raise click.ClickException(f"Storage dir not found: {root}")
 
         if doctor:
-            click.echo("[doctor] storage dir: {}".format(root))
-            click.echo(
-                "[doctor] project dir exists: {}".format((root / "project").exists())
-            )
-            click.echo(
-                "[doctor] session dir exists: {}".format((root / "session").exists())
-            )
-            click.echo(
-                "[doctor] message dir exists: {}".format((root / "message").exists())
-            )
-            click.echo("[doctor] part dir exists: {}".format((root / "part").exists()))
-            project_count = (
-                len(list((root / "project").glob("*.json")))
-                if (root / "project").exists()
-                else 0
-            )
+            click.echo("[doctor] data path: {}".format(root))
+            if root.is_file():
+                click.echo("[doctor] using direct db file: {}".format(root))
+            else:
+                click.echo("[doctor] db path: {}".format(root / "opencode.db"))
+                click.echo(
+                    "[doctor] db exists: {}".format((root / "opencode.db").exists())
+                )
+            project_count = len(load_projects(root))
             click.echo(f"[doctor] projects found: {project_count}")
             warnings = get_storage_schema_warnings(root)
             if warnings:
